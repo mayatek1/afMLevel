@@ -1,0 +1,16 @@
+# Byte-compiled / optimised / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Editor / IDE settings
+.spyproject/
+.vscode/
+.idea/
+
+#OS-specific
+.DS_Store
+Thumbs.db
+
+#Model files
+*.pth
