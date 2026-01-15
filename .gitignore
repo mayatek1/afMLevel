@@ -11,6 +11,23 @@ __pycache__/
 #OS-specific
 .DS_Store
 Thumbs.db
+[Dd]esktop.ini
 
 #Model files
 *.pth
+
+# Distribution / packaging
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Ruff / linting cache
+.ruff_cache/
+.flake8
+
+_version.py
