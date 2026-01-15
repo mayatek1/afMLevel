@@ -114,15 +114,12 @@ def xyplanefit(imarray, polyx, polyy):
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-def applymodel_mask(imarray):
+def applymodel_mask(imarray, model_path):
 
     dim = (256, 256)  # dimensions for image resize
     polyx = 1
     polyy = 1  # order of polynomial plane fit to initially apply to raw image
     n_channels = 1
-    model_filename = (
-        "unetmodel_Aire_Mask_80eps_b32_d0_1f7_f7_7l_line2_train34_otsublur1_epoch69"
-    )
     # won't be changing which model is used once we have found the best one, so this is defined in the function
 
     # ~~~~~~~~~~~~~~~~~~~~~MODEL SETTINGS ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -246,10 +243,9 @@ def applymodel_mask(imarray):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Load the trained model
-    model_file = f"{model_filename}.pth"
-    if not os.path.exists(model_file):
-        raise FileNotFoundError(f"Model file not found: {model_file}")
-    loaded_model = load_model(model_file, n_channels, device)
+    if not os.path.exists(model_path):
+        raise FileNotFoundError(f"Model file not found: {model_path}")
+    loaded_model = load_model(model_path, n_channels, device)
     # print("Model loaded successfully.")
 
     def predict_on_image(model, image, device):
@@ -281,7 +277,7 @@ def applymodel_mask(imarray):
     return predictedmask_final
 
 
-def applymodel_mask_stack(imarray):
+def applymodel_mask_stack(imarray, model_path):
 
     dim = (256, 256)  # dimensions for image resize
     if imarray.ndim == 3:
@@ -294,7 +290,6 @@ def applymodel_mask_stack(imarray):
     polyx = 1
     polyy = 1  # order of polynomial plane fit to initially apply to raw image
     n_channels = 1
-    model_filename = "unetmodel_Aire_Mask_80eps_b32_d0_1f7_f7_7l_line2_train34_otsublur1_epoch69"  # NEW MODEL AFTER PARAM TESTING FOR APR #'unetmodel_Aire_mask_80eps_b32_d0_1f5x5_f5x5_7l_2line_rpt1_epoch78'
     # won't be changing which model is used once we have found the best one, so this is defined in the function
 
     # ~~~~~~~~~~~~~~~~~~~~~MODEL SETTINGS ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -434,10 +429,9 @@ def applymodel_mask_stack(imarray):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Load the trained model
-    model_file = f"{model_filename}.pth"
-    if not os.path.exists(model_file):
-        raise FileNotFoundError(f"Model file not found: {model_file}")
-    loaded_model = load_model(model_file, n_channels, device)
+    if not os.path.exists(model_path):
+        raise FileNotFoundError(f"Model file not found: {model_path}")
+    loaded_model = load_model(model_path, n_channels, device)
     # print("Model loaded successfully.")
 
     def predict_on_image(model, image, device):
@@ -473,14 +467,13 @@ def applymodel_mask_stack(imarray):
     return predictedmasklist
 
 
-def applymodel_bg_pixelsplit_all(imarray, lineorder):
+def applymodel_bg_pixelsplit_all(imarray, lineorder, model_path):
 
     # dim = (256, 256)  # dimensions of image section that model will be applied to
     polyx = 1
     polyy = 1  # order of polynomial plane fit to initially apply to raw image
     n_channels = 1
     lineorder = lineorder
-    model_filename = r"C:\Users\ggjh246\OneDrive - University of Leeds\Code\afMLevel\unetmodel_Aire_BG_60eps_b32_d0_1f9_f9_7l_MSE_0line_train34_epoch59"
     # won't be changing which model is used once we have found the best one, so this is defined in the function
 
     # ~~~~~~~~~~~~~~~~~~~~~MODEL SETTINGS ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -635,11 +628,9 @@ def applymodel_bg_pixelsplit_all(imarray, lineorder):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Load the trained model
-    model_file = f"{model_filename}.pth"
-    print(model_file)
-    if not os.path.exists(model_file):
-        raise FileNotFoundError(f"Model file not found: {model_file}")
-    loaded_model = load_model(model_file, n_channels, device)
+    if not os.path.exists(model_path):
+        raise FileNotFoundError(f"Model file not found: {model_path}")
+    loaded_model = load_model(model_path, n_channels, device)
     # print("Model loaded successfully.")
 
     def predict_on_image(model, arrays, device):
@@ -686,7 +677,7 @@ def applymodel_bg_pixelsplit_all(imarray, lineorder):
     return predictedBG_linefit, predictedLev
 
 
-def applymodel_bg_pixelsplit_stack(imarray, lineorder):
+def applymodel_bg_pixelsplit_stack(imarray, lineorder, model_path):
 
     # dim = (256, 256)  # dimensions of image section that model will be applied to
     if imarray.ndim == 3:
@@ -697,10 +688,6 @@ def applymodel_bg_pixelsplit_stack(imarray, lineorder):
     polyy = 1  # order of polynomial plane fit to initially apply to raw image
     n_channels = 1
     lineorder = lineorder
-    model_filename = (
-        "unetmodel_Aire_BG_60eps_b32_d0_1f9_f9_7l_MSE_0line_train34_epoch59"
-    )
-    # won't be changing which model is used once we have found the best one, so this is defined in the function
 
     # ~~~~~~~~~~~~~~~~~~~~~MODEL SETTINGS ~~~~~~~~~~~~~~~~~~~~~~~~~~~
     filtersize1 = 9
@@ -879,10 +866,9 @@ def applymodel_bg_pixelsplit_stack(imarray, lineorder):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Load the trained model
-    model_file = f"{model_filename}.pth"
-    if not os.path.exists(model_file):
-        raise FileNotFoundError(f"Model file not found: {model_file}")
-    loaded_model = load_model(model_file, n_channels, device)
+    if not os.path.exists(model_path):
+        raise FileNotFoundError(f"Model file not found: {model_path}")
+    loaded_model = load_model(model_path, n_channels, device)
     # print("Model loaded successfully.")
 
     def predict_on_image(model, arrays, device):
