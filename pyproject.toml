@@ -1,0 +1,168 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel", "setuptools-scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "afMLevel"
+description = "Machine Learning based AFM levelling functions."
+authors = [
+    {name = "Maya Tekchandani", email = "pymte@leeds.ac.uk"},
+    { name = "D. E. Rollins", email = "d.e.rollins@leeds.ac.uk" },
+    { name = "George Heath", email = "G.R.Heath@leeds.ac.uk" },
+]
+dynamic = ["version"]
+readme = "README.md"
+license = { text = "BSD-3-Clause" }
+requires-python = ">=3.11"
+dependencies = [
+  "torch",                     # CPU wheel from PyPI
+  "pytorch-msssim",
+  "scipy",
+  "opencv-python",             # or "opencv-python-headless" on servers/CI
+  "numpy",
+  "pillow",
+  "scikit-learn",
+  "scikit-image",
+  "pandas",
+  "matplotlib",
+]
+keywords = [
+  # Core domain
+  "AFM",
+  "atomic force microscopy",
+  "high-speed AFM",
+  "scanning probe microscopy",
+  "SPM",
+  "nanoscopy",
+  "nanometrology",
+  "microscopy",
+
+  # Techniques and data
+  "image processing",
+  "video processing",
+  "image segmentation",
+  "image analysis",
+
+  # Machine Learning
+  "machine learning",
+  "ML",
+  "AI",
+  "U-Net",
+  "neural network",
+
+  # Scientific software context
+  "data analysis",
+  "microscopy data",
+  "scientific computing",
+  "open science",
+
+  # Target users
+  "materials science",
+  "biophysics",
+  "nanotechnology",
+  "biomolecular imaging",
+  "surface analysis",
+
+  "afmlevel",
+]
+
+classifiers = [
+  "Development Status :: 2 - Pre-Alpha",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: BSD License",
+  "Natural Language :: English",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering :: Image Processing",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov",
+    "pre-commit",
+    "isort",
+    "ruff",
+    "black",
+    "codespell>=2.3.0",
+    "setuptools_scm",
+]
+
+[project.urls]
+Homepage = "https://github.com/mayatek1/afMLevel"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools_scm]
+write_to = "src/afmlevel/_version.py"
+
+[tool.black]
+line-length = 88
+target-version = ["py311"]
+include = '\.pyi?$'
+
+exclude = '''
+(
+  ^\.git
+| ^\.hg
+| ^\.mypy_cache
+| ^\.tox
+| ^\.venv
+| ^_build
+| ^buck-out
+| ^build
+| ^dist
+| \.ipynb$
+)
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 88
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+combine_as_imports = true
+known_first_party = ["pnanolocz_lib"]
+known_third_party = ["numpy","scipy","matplotlib","torch","sklearn","skimage","pandas","PIL","cv2","pytorch_msssim"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+respect-gitignore = true
+src = ["src"]
+# exclude = ["notebooks", "*.ipynb"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "C4", "D"]
+ignore = ["D100", "D104", "D203", "D212", "D401"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.codespell]
+skip = "*.egg-info,*.png,*.jpg,*.jpeg,*.gif,*.bmp,*.svg,*.ico,*.pdf,*.zip,*.gz,*.bz2,*.xz,*.7z,*.mp3,*.wav,*.mp4,*.mov,*.tif,*.tiff,*.ipynb,docs/_build/*,build/*,dist/*,*.html,*.css,*.js"
+ignore-words-list = "tabel,crate"
+check-filenames = false
+check-hidden = false
+
+[tool.pytest.ini_options]
+addopts = "--cov=afmlevel --cov-report=term-missing --cov-append"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+source = ["afmlevel"]
+
+[tool.coverage.report]
+exclude_lines = [
+  "pragma: no cover",
+  "if __name__ == .__main__.:",
+  "raise NotImplementedError"
+]
