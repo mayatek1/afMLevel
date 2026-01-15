@@ -467,7 +467,7 @@ def applymodel_mask_stack(imarray, model_path):
     return predictedmasklist
 
 
-def applymodel_bg_pixelsplit_all(imarray, lineorder, model_path):
+def applymodel_bg(imarray, lineorder, model_path):
 
     # dim = (256, 256)  # dimensions of image section that model will be applied to
     polyx = 1
@@ -677,7 +677,7 @@ def applymodel_bg_pixelsplit_all(imarray, lineorder, model_path):
     return predictedBG_linefit, predictedLev
 
 
-def applymodel_bg_pixelsplit_stack(imarray, lineorder, model_path):
+def applymodel_bg_stack(imarray, lineorder, model_path):
 
     # dim = (256, 256)  # dimensions of image section that model will be applied to
     if imarray.ndim == 3:
