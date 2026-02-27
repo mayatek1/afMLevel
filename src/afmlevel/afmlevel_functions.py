@@ -8,12 +8,14 @@ Created on Wed Jan 14 13:10:12 2026
 
 import math
 import os
+from typing import Any, List
 
 import cv2
 import numpy as np
 import torch
 import torch.nn as nn
 from scipy.ndimage import generate_binary_structure, label
+from pnanolocz_lib.level import apply_level
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~UTILS~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -467,14 +469,34 @@ def applymodel_mask_stack(imarray, model_path):
     return predictedmasklist
 
 
-def applymodel_bg(imarray, lineorder, model_path):
+def applymodel_bg(
+    imarray: np.ndarray,
+    lineorder: int,
+    model_path: str,
+    background: bool = False,
+) -> np.ndarray:
+    """
+    Apply the trained U-Net model to predict background and level an AFM image.
 
-    # dim = (256, 256)  # dimensions of image section that model will be applied to
+    Parameters
+    ----------
+    imarray : np.ndarray
+        Input raw AFM image to level.
+    lineorder : int
+        Polynomial order for the final line fit.
+    model_path : str
+        String of the path to the trained model (.pth file).
+
+    Returns
+    -------
+    (np.ndarray)
+        The final levelled AFM image or the predicted background after the final linefit if background=True.
+    """
+    # TODO: remove the preprocessing step from the function that applies the model
+    # or parametise.
     polyx = 1
     polyy = 1  # order of polynomial plane fit to initially apply to raw image
     n_channels = 1
-    lineorder = lineorder
-    # won't be changing which model is used once we have found the best one, so this is defined in the function
 
     # ~~~~~~~~~~~~~~~~~~~~~MODEL SETTINGS ~~~~~~~~~~~~~~~~~~~~~~~~~~~
     filtersize1 = 9
@@ -615,7 +637,7 @@ def applymodel_bg(imarray, lineorder, model_path):
 
             return self.final(x)
 
-    def load_model(model_path, n_channels, device):
+    def load_model(model_path: str, n_channels: int, device: str):
         model = UNet(n_channels=n_channels)
         model.load_state_dict(
             torch.load(model_path, map_location=device, weights_only=False)
@@ -674,12 +696,219 @@ def applymodel_bg(imarray, lineorder, model_path):
 
     predictedLev = imarray - predictedBG_linefit
 
-    return predictedBG_linefit, predictedLev
+    if background is True:
+        return predictedBG_linefit
+    else:
+        return predictedLev
 
 
-def applymodel_bg_stack(imarray, lineorder, model_path):
+def level_ml_mask_auto(
+    imarray: np.ndarray, model_path: str
+) -> np.ndarray[Any, np.dtype[np.float64]]:
+    """
+    AFM leveling using a learned mask and a routine of plane/median fits.
 
-    # dim = (256, 256)  # dimensions of image section that model will be applied to
+    This routine alternates between predicting a mask with a trained model
+    (`applymodel_mask`) and applying leveling operations (`apply_level`) while
+    respecting the mask. This is based on the iterative 1nm routine from the
+    Nanolocz software library (Python-Nanolocz-Library version:
+    https://github.com/derollins/Python-Nanolocz-Library).
+
+    **Mask polarity**: `applymodel_mask` return a binary *background* mask
+    (1 = background, 0 = feature). Downstream filters (e.g., `apply_level`) expect a
+    boolean *foreground* mask (True = foreground). Therefore, the routine **inverts**
+    the model mask before passing it to filters so that True denotes forground.
+
+    Parameters
+    ----------
+    imarray : np.ndarray
+        Input image or stack.
+        - 2D: shape (H, W), processed as a single-frame stack of shape (1, H, W)
+        - 3D: shape (N, H, W), processed frame-by-frame
+        Internally cast to float64 for leveling, and to float32 for model inference.
+    model_path : str
+        Path to the trained model used by `applymodel_mask`.
+
+    Returns
+    -------
+    np.ndarray
+        Processed image or stack:
+        - shape (H, W) if input was 2D
+        - shape (N, H, W) if input was 3D
+
+    Notes
+    -----
+    - The raw output of `applymodel_mask` (probabilities or boolean) is converted to
+      a boolean mask by thresholding at 0.5 if floating, then **inverted** so that
+      True = forground (matching the mask polarity expected by filters).
+    - If `applymodel_mask` returns shape (1, H, W), it is squeezed to (H, W).
+    """
+    # Create a routine for iteratively applying the model and plane fits.
+    # Uses the format of the `ROUTINES` dictinary in `pnanolocz_lib.level_auto`.
+    ml_routine = {
+        "iterative ML mask": [
+            # First model application to get mask
+            {
+                "func": applymodel_mask,
+                "model_path": model_path,
+                "invert": True,
+            },
+            # Second plane fit to masked image
+            {
+                "func": apply_level,
+                "polyx": 1,
+                "polyy": 1,
+                "method": "plane",
+            },
+            # Second model application to get mask
+            {
+                "func": applymodel_mask,
+                "model_path": model_path,
+                "invert": True,
+            },
+            # Third plane fit to masked image
+            {
+                "func": apply_level,
+                "polyx": 1,
+                "polyy": 1,
+                "method": "plane",
+            },
+            # Third model application to get mask
+            {
+                "func": applymodel_mask,
+                "model_path": model_path,
+                "invert": True,
+            },
+            # Median line fit to masked image
+            {
+                "func": apply_level,
+                "polyx": 0,
+                "polyy": 0,
+                "method": "med_line",
+            },
+            # Plane fit in x direction to masked image
+            {
+                "func": apply_level,
+                "polyx": 1,
+                "polyy": 0,
+                "method": "plane",
+            },
+            # Fourth model application to get mask
+            {
+                "func": applymodel_mask,
+                "model_path": model_path,
+                "invert": True,
+            },
+            # Median line fit to masked image
+            {
+                "func": apply_level,
+                "polyx": 0,
+                "polyy": 0,
+                "method": "med_line",
+            },
+            # Second order plane fit in x direction to masked image
+            {
+                "func": apply_level,
+                "polyx": 2,
+                "polyy": 0,
+                "method": "plane",
+            },
+        ],
+    }
+    if "iterative ML mask" not in ml_routine:
+        raise ValueError("Unknown routine 'iterative ML mask'")
+    imarray = np.asarray(imarray)
+
+    # Cast uint8 to float64 in range [0, 1]
+    if imarray.dtype == np.uint8:
+        imarray = imarray.astype(np.float64) / 255.0
+    else:
+        imarray = imarray.astype(np.float64)
+
+    # Ensure imarray is 3D (N, H, W) for consistent processing
+    if imarray.ndim == 2:
+        imarray = imarray[np.newaxis, :, :]
+        was_2d = True
+    elif imarray.ndim == 3:
+        was_2d = False
+    else:
+        raise ValueError(
+            "imarray must be either 2D or 3D with shape (H, W) or (N, H, W)"
+        )
+
+    result = imarray.copy()
+    steps = ml_routine["iterative ML mask"]
+    frames = range(imarray.shape[0])
+
+    for i in frames:
+        img = result[i].copy()
+        mask = None
+        for _idx, step in enumerate(steps):
+            func = step["func"]
+            params = {k: v for k, v in step.items() if k != "func"}
+
+            if func is applymodel_mask:
+                model_path = params["model_path"]
+
+                # 1) Ensure consistent dtype/range
+                img_for_model = np.asarray(img, dtype=np.float32, order="C")
+                mask_raw = applymodel_mask(img_for_model, model_path)
+
+                # 3) Convert to NumPy 2D
+                mask = np.asarray(mask_raw)
+                if mask.ndim == 3 and mask.shape[0] == 1:
+                    mask = mask[0]
+
+                # 4) Convert floats → boolean safely
+                if mask.dtype != bool:
+                    if np.issubdtype(mask.dtype, np.floating):
+                        mask = mask > 0.5
+                    else:
+                        mask = mask.astype(bool)
+
+                # 5) Only invert if requested
+                if params.get("invert", True):
+                    mask = ~mask
+
+                continue  # go to next step
+            # Generic path for all other steps (unchanged)
+            img = func(
+                img,
+                mask=mask,
+                **{k: v for k, v in params.items() if k not in ("args", "invert")},
+            )
+
+            result[i] = img.copy()
+
+    return np.asarray(result[0]) if was_2d else np.asarray(result)
+
+
+def applymodel_bg_stack(
+    imarray,
+    lineorder,
+    model_path,
+    background: bool = False,
+) -> List[np.ndarray]:
+    """
+    Apply the trained U-Net model to predict background and level an AFM image stack.
+
+    Parameters
+    ----------
+    imarray : np.ndarray
+        Input raw AFM image stack to level.
+    lineorder : int
+        Polynomial order for the final line fit.
+    model_path : str
+        String of the path to the trained model (.pth file).
+    background : bool, optional
+        If True, return the predicted background after the final line fit instead of the levelled image
+
+    Returns
+    -------
+    List [np.ndarray]
+        The the final levelled AFM images in a list or the predicted backgrounds in a list after the final
+        linefit if background=True.
+    """
     if imarray.ndim == 3:
         originaldim = imarray.shape[1:]
     else:
@@ -925,4 +1154,7 @@ def applymodel_bg_stack(imarray, lineorder, model_path):
         predictedLev_m = predictedLev - median
         predictedLevlist.append(predictedLev_m)
 
-    return predictedBGlist, predictedLevlist
+    if background is True:
+        return predictedBGlist
+    else:
+        return predictedLevlist

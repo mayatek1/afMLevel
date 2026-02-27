@@ -93,6 +93,10 @@ dev = [
 [project.urls]
 Homepage = "https://github.com/mayatek1/afMLevel"
 
+[project.entry-points."playnano.filters"]
+afmlevel_bg_model = "afmlevel.afmlevel_functions:applymodel_bg"
+level_ml_mask_auto = "afmlevel.afmlevel_functions:level_ml_mask_auto"
+
 [tool.setuptools]
 package-dir = { "" = "src" }
 
