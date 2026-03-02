@@ -3,11 +3,11 @@ requires = ["setuptools>=61.0", "wheel", "setuptools-scm>=8"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "afMLevel"
+name = "afmlevel"
 description = "Machine Learning based AFM levelling functions."
 authors = [
     {name = "Maya Tekchandani", email = "pymte@leeds.ac.uk"},
-    { name = "D. E. Rollins", email = "d.e.rollins@leeds.ac.uk" },
+    { name = "Daniel E. Rollins", email = "d.e.rollins@leeds.ac.uk" },
     { name = "George Heath", email = "G.R.Heath@leeds.ac.uk" },
 ]
 dynamic = ["version"]
@@ -15,16 +15,17 @@ readme = "README.md"
 license = { text = "BSD-3-Clause" }
 requires-python = ">=3.11"
 dependencies = [
-  "torch",                     # CPU wheel from PyPI
+  "torch",
   "pytorch-msssim",
   "scipy",
-  "opencv-python",             # or "opencv-python-headless" on servers/CI
+  "opencv-python",
   "numpy",
   "pillow",
   "scikit-learn",
   "scikit-image",
   "pandas",
   "matplotlib",
+  "pnanolocz_lib",
 ]
 keywords = [
   # Core domain
@@ -94,8 +95,8 @@ dev = [
 Homepage = "https://github.com/mayatek1/afMLevel"
 
 [project.entry-points."playnano.filters"]
-afmlevel_bg_model = "afmlevel.afmlevel_functions:applymodel_bg"
-level_ml_mask_auto = "afmlevel.afmlevel_functions:level_ml_mask_auto"
+level_ml_bg = "afmlevel.background_model:level_ml_bg"
+level_ml_mask = "afmlevel.mask_model:level_ml_mask"
 
 [tool.setuptools]
 package-dir = { "" = "src" }
@@ -141,7 +142,7 @@ line-length = 88
 target-version = "py311"
 respect-gitignore = true
 src = ["src"]
-# exclude = ["notebooks", "*.ipynb"]
+exclude = ["notebooks", "*.ipynb"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "C4", "D"]

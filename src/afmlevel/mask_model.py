@@ -1,40 +1,201 @@
-import os
-from typing import Any
+from typing import Any, List, Optional
 
 import cv2
 import numpy as np
 import torch
-
-from afmlevel.unet import UNet
-from afmlevel.utils import normalise, remove_small_zeros, swap01, xyplanefit
 from pnanolocz_lib.level_auto import apply_level
+
+from afmlevel.unet import load_unet_model
+from afmlevel.utils import normalise, remove_small_zeros, swap01, xyplanefit
+
+# from afmlevel.post import swap01, remove_small_zeros  # adjust your import path
+# Ensure swap01 and remove_small_zeros are imported from wherever they live
 
 # ~~~~~~~~~~~~~~~~~~~~~MODEL SETTINGS ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-UNET_CONFIG = dict(
-    filtersize1=7,
-    filtersize=7,
-    leakyrelu=False,
-    dropoutprob=0,
-)
+UNET_CONFIG = {
+    "filtersize1": 7,
+    "filtersize": 7,
+    "leakyrelu": False,
+    "dropoutprob": 0,
+}
 
 
-def level_ml_mask_auto(
-    imarray: np.ndarray, model_path: str
+def _predict_mask_256(
+    model: torch.nn.Module,
+    image_256_norm: np.ndarray,
+    device: torch.device,
+    threshold: float = 0.5,
+) -> np.ndarray:
+    """
+    Predict a binary mask from a single normalized 256x256 image (float32 in [0,1]).
+
+    Returns (256, 256) np.uint8 array with {0,1}.
+    """
+    assert image_256_norm.shape == (
+        256,
+        256,
+    ), f"Expected (256,256), got {image_256_norm.shape}"
+    # Ensure dtype float32 and contiguous layout
+    image_256_norm = np.ascontiguousarray(image_256_norm, dtype=np.float32)
+
+    model.eval()
+    with torch.inference_mode():
+        x = (
+            torch.from_numpy(image_256_norm).unsqueeze(0).unsqueeze(0).to(device)
+        )  # [1,1,256,256]
+        logits = model(x)  # [1,1,256,256]
+        probs = torch.sigmoid(logits)  # [1,1,256,256]
+        binary = (probs > threshold).to(torch.uint8)  # [1,1,256,256] uint8
+        mask = (
+            binary.squeeze(0).squeeze(0).detach().cpu().numpy()
+        )  # (256,256), values {0,1}
+    return mask
+
+
+def _process_single_image_mask(
+    model: torch.nn.Module,
+    image: np.ndarray,
+    polyx: int = 1,
+    polyy: int = 1,
+    out_min_size: int = 30,
+    threshold: float = 0.5,
+) -> np.ndarray:
+    """
+    Process one 2D image.
+
+    plane-fit -> resize(256x256) -> normalise -> predict
+    -> resize back -> swap01 -> remove_small_zeros
+
+    Returns a binary mask with the same HxW shape as the input (dtype uint8,
+    values {0,1}).
+    """
+    H, W = image.shape
+    # plane fit
+    im_planefit = xyplanefit(image, polyx, polyy)
+    # resize to 256x256
+    im_resized = cv2.resize(im_planefit, (256, 256), interpolation=cv2.INTER_NEAREST)
+    # normalize
+    im_norm, _, _ = normalise(im_resized)
+
+    # predict on 256x256 normalized
+    device = next(model.parameters()).device
+    mask_256 = _predict_mask_256(model, im_norm, device=device, threshold=threshold)
+
+    # resize mask back to original (nearest-neighbor keeps labels intact)
+    mask_back = cv2.resize(mask_256, (W, H), interpolation=cv2.INTER_NEAREST).astype(
+        np.uint8
+    )
+
+    # post-processing
+    mask_swapped = swap01(mask_back)  # keeps {0,1}, returns np.uint8 or bool
+    mask_final = remove_small_zeros(
+        mask_swapped, min_size=out_min_size
+    )  # returns {0,1}
+
+    # Ensure uint8 {0,1}
+    return (mask_final > 0).astype(np.uint8)
+
+
+def ml_mask(
+    imarray: np.ndarray,
+    model_path: str,
+    device: Optional[str] = None,
+    threshold: float = 0.5,
+    polyx: int = 1,
+    polyy: int = 1,
+    min_size: int = 30,
+) -> np.ndarray:
+    """
+    Apply the trained U-Net mask model to a single AFM image (H,W) or a stack (N,H,W).
+
+    For a 2D input, returns a (H,W) binary mask.
+    For a 3D input, returns a (N,H,W) stack of binary masks.
+
+    Parameters
+    ----------
+    imarray : np.ndarray
+        2D image (H,W) or 3D stack (N,H,W).
+    model_path : str
+        Path to .pth (state_dict) file.
+    device : Optional[str]
+        'cuda' or 'cpu'; if None, auto-select CUDA if available.
+    threshold : float
+        Sigmoid probability threshold for binarisation.
+    polyx, polyy : int
+        Plane-fit polynomial orders.
+    min_size : int
+        Minimum 'hole' size to fill in remove_small_zeros (post-processing).
+
+    Returns
+    -------
+    np.ndarray
+        Same leading shape as input. Binary masks with values {0,1}, dtype uint8.
+    """
+    if imarray.ndim not in (2, 3):
+        raise ValueError(f"imarray must be 2D or 3D, got {imarray.shape}")
+
+    # Ensure float32 input for consistent numeric path
+    if imarray.dtype != np.float32:
+        imarray = imarray.astype(np.float32, copy=False)
+
+    torch_device = torch.device(
+        device
+        if device is not None
+        else ("cuda" if torch.cuda.is_available() else "cpu")
+    )
+
+    # Load model once
+    n_channels = 1
+    model = load_unet_model(model_path, n_channels, UNET_CONFIG, torch_device)
+
+    if imarray.ndim == 2:
+        return _process_single_image_mask(
+            model,
+            imarray,
+            polyx=polyx,
+            polyy=polyy,
+            out_min_size=min_size,
+            threshold=threshold,
+        )
+
+    # 3D stack
+    N = imarray.shape[0]
+    out_masks: List[np.ndarray] = []
+    for i in range(N):
+        mask_i = _process_single_image_mask(
+            model,
+            imarray[i],
+            polyx=polyx,
+            polyy=polyy,
+            out_min_size=min_size,
+            threshold=threshold,
+        )
+        out_masks.append(mask_i)
+
+    return np.stack(out_masks, axis=0)
+
+
+def level_ml_mask(
+    imarray: np.ndarray,
+    model_path: str,
+    device: Optional[str] = None,
+    threshold: float = 0.5,
+    min_size: int = 30,
 ) -> np.ndarray[Any, np.dtype[np.float64]]:
     """
     AFM leveling using a learned mask and a routine of plane/median fits.
 
     This routine alternates between predicting a mask with a trained model
-    (`applymodel_mask`) and applying leveling operations (`apply_level`) while
+    (`ml_mask`) and applying leveling operations (`apply_level`) while
     respecting the mask. This is based on the iterative 1nm routine from the
     Nanolocz software library (Python-Nanolocz-Library version:
     https://github.com/derollins/Python-Nanolocz-Library).
 
-    **Mask polarity**: `applymodel_mask` return a binary *background* mask
+    **Mask polarity**: `ml_mask` return a binary *background* mask
     (1 = background, 0 = feature). Downstream filters (e.g., `apply_level`) expect a
     boolean *foreground* mask (True = foreground). Therefore, the routine **inverts**
-    the model mask before passing it to filters so that True denotes forground.
+    the model mask before passing it to filters so that True denotes foreground.
 
     Parameters
     ----------
@@ -44,7 +205,15 @@ def level_ml_mask_auto(
         - 3D: shape (N, H, W), processed frame-by-frame
         Internally cast to float64 for leveling, and to float32 for model inference.
     model_path : str
-        Path to the trained model used by `applymodel_mask`.
+        Path to the trained model used by `ml_mask`.
+    device : Optional[str]
+        'cuda' or 'cpu'. If None, auto-selects CUDA if available.
+    threshold : float
+        Threshold used inside `ml_mask` for binarisation after sigmoid.
+    min_size : int
+        Minimum component size used by `ml_mask` in post-processing (e.g.,
+        remove_small_zeros).
+
 
     Returns
     -------
@@ -52,21 +221,22 @@ def level_ml_mask_auto(
         Processed image or stack:
         - shape (H, W) if input was 2D
         - shape (N, H, W) if input was 3D
+        dtype float64 (matching typical leveling pipeline expectations)
 
     Notes
     -----
-    - The raw output of `applymodel_mask` (probabilities or boolean) is converted to
+    - The raw output of `ml_mask` (probabilities or boolean) is converted to
       a boolean mask by thresholding at 0.5 if floating, then **inverted** so that
-      True = forground (matching the mask polarity expected by filters).
-    - If `applymodel_mask` returns shape (1, H, W), it is squeezed to (H, W).
+      True = foreground (matching the mask polarity expected by pnanolocz_lib filters).
+    - If `ml_mask` returns shape (1, H, W), it is squeezed to (H, W).
     """
     # Create a routine for iteratively applying the model and plane fits.
-    # Uses the format of the `ROUTINES` dictinary in `pnanolocz_lib.level_auto`.
+    # Uses the format of the `ROUTINES` dictionary in `pnanolocz_lib.level_auto`.
     ml_routine = {
         "iterative ML mask": [
             # First model application to get mask
             {
-                "func": applymodel_mask,
+                "func": ml_mask,
                 "model_path": model_path,
                 "invert": True,
             },
@@ -79,7 +249,7 @@ def level_ml_mask_auto(
             },
             # Second model application to get mask
             {
-                "func": applymodel_mask,
+                "func": ml_mask,
                 "model_path": model_path,
                 "invert": True,
             },
@@ -92,7 +262,7 @@ def level_ml_mask_auto(
             },
             # Third model application to get mask
             {
-                "func": applymodel_mask,
+                "func": ml_mask,
                 "model_path": model_path,
                 "invert": True,
             },
@@ -112,7 +282,7 @@ def level_ml_mask_auto(
             },
             # Fourth model application to get mask
             {
-                "func": applymodel_mask,
+                "func": ml_mask,
                 "model_path": model_path,
                 "invert": True,
             },
@@ -132,228 +302,100 @@ def level_ml_mask_auto(
             },
         ],
     }
+
     if "iterative ML mask" not in ml_routine:
         raise ValueError("Unknown routine 'iterative ML mask'")
-    imarray = np.asarray(imarray)
 
-    # Cast uint8 to float64 in range [0, 1]
-    if imarray.dtype == np.uint8:
-        imarray = imarray.astype(np.float64) / 255.0
+    # ----- Normalise input shape and dtype -----
+    arr = np.asarray(imarray)
+    # Cast uint8 -> float64 in [0,1]; otherwise float64
+    if arr.dtype == np.uint8:
+        arr = arr.astype(np.float64) / 255.0
     else:
-        imarray = imarray.astype(np.float64)
+        arr = arr.astype(np.float64, copy=False)
 
-    # Normalise dimensions- Ensure imarray is 3D (N, H, W) for consistent processing
-    if imarray.ndim == 2:
-        imarray = imarray[np.newaxis, :, :]
+    # Ensure (N, H, W)
+    was_2d = False
+    if arr.ndim == 2:
+        arr = arr[np.newaxis, ...]
         was_2d = True
-
-    elif imarray.ndim == 3:
-        # Determine whether this is (N, H, W) or (H, W, C)
-        # AFM data is never channel-last, so treat as stack only if first dimension is small
-        if imarray.shape[0] == 1 and imarray.shape[-1] != 1:
-            # Probably a color or weird channel image → collapse last axis
-            imarray = imarray[..., 0]
-            imarray = imarray[np.newaxis, :, :]
+    elif arr.ndim == 3:
+        # Handle (H, W, 1) or (H, W, C) gracefully as single-frame
+        if arr.shape[-1] == 1:  # (H, W, 1)
+            arr = arr[..., 0][np.newaxis, ...]
             was_2d = True
-        elif imarray.shape[-1] == 1:
-            # Interpret (H, W, 1) as a single frame
-            imarray = imarray[..., 0]  # remove channel
-            imarray = imarray[np.newaxis, :, :]
-            was_2d = True
-        else:
-            # This is a real stack (N, H, W)
-            was_2d = False
-
+        elif arr.shape[0] == 1 and arr.shape[-1] != 1:  # (1, H, W, C?) oddball
+            arr = arr[0]
+            if arr.ndim == 2:
+                arr = arr[np.newaxis, ...]
+                was_2d = True
+            else:
+                raise ValueError("Unexpected 3D/4D shape for imarray")
+        # else: assume proper (N, H, W)
     else:
         raise ValueError("imarray must be 2D or 3D")
 
-    result = imarray.copy()
+    # Device selection (pass through to ml_mask)
+    torch_device = torch.device(
+        device
+        if device is not None
+        else ("cuda" if torch.cuda.is_available() else "cpu")
+    )
+
+    result = arr.copy()
     steps = ml_routine["iterative ML mask"]
-    frames = range(imarray.shape[0])
+    N = result.shape[0]
 
-    for i in frames:
-        img = result[i].copy()
-        mask = None
-        for _idx, step in enumerate(steps):
+    for i in range(N):
+        img = result[i]
+        fg_mask_bool = None  # foreground mask, boolean
+
+        for step in steps:
             func = step["func"]
-            params = {k: v for k, v in step.items() if k != "func"}
 
-            if func is applymodel_mask:
-                model_path = params["model_path"]
-
-                # 1) Ensure consistent dtype/range
+            if func is ml_mask:
+                # --- Call ml_mask on the current image ---
+                # ml_mask handles float conversion & normalisation internally;
+                #  we pass float32 for speed
                 img_for_model = np.asarray(img, dtype=np.float32, order="C")
-                mask_raw = applymodel_mask(img_for_model, model_path)
+                # Expect ml_mask to return (H,W) uint8 {0,1} or bool mask
+                bg_mask = ml_mask(
+                    img_for_model,
+                    model_path=model_path,
+                    device=str(torch_device),
+                    threshold=threshold,
+                    min_size=min_size,
+                )
+                bg_mask = np.asarray(bg_mask)
 
-                # 3) Convert to NumPy 2D
-                mask = np.asarray(mask_raw)
-                if mask.ndim == 3 and mask.shape[0] == 1:
-                    mask = mask[0]
+                # Convert to boolean
+                if bg_mask.dtype == np.uint8 or np.issubdtype(
+                    bg_mask.dtype, np.integer
+                ):
+                    bg_mask = bg_mask.astype(bool)
+                elif np.issubdtype(bg_mask.dtype, np.floating):
+                    bg_mask = bg_mask > 0.5
+                elif bg_mask.dtype != bool:
+                    bg_mask = bg_mask.astype(bool)
 
-                # 4) Convert floats → boolean safely
-                if mask.dtype != bool:
-                    if np.issubdtype(mask.dtype, np.floating):
-                        mask = mask > 0.5
-                    else:
-                        mask = mask.astype(bool)
+                # Invert to get foreground (True = features)
+                if step.get("invert", True):
+                    fg_mask_bool = ~bg_mask
+                else:
+                    fg_mask_bool = bg_mask
+                continue
 
-                # 5) Only invert if requested
-                if params.get("invert", True):
-                    mask = ~mask
-
-                continue  # go to next step
-            # Generic path for all other steps (unchanged)
+            # --- Otherwise it's a leveling step ---
+            # Pass the foreground mask to apply_level
+            # NOTE: apply_level is assumed to accept a mask where True means foreground
             img = func(
                 img,
-                mask=mask,
-                **{k: v for k, v in params.items() if k not in ("args", "invert")},
+                mask=fg_mask_bool,
+                **{k: v for k, v in step.items() if k not in ("func", "invert")},
             )
 
-            result[i] = img.copy()
+        # Save back the processed frame
+        result[i] = img
 
-    return np.asarray(result[0]) if was_2d else np.asarray(result)
-
-
-def applymodel_mask(imarray, model_path):
-
-    dim = (256, 256)  # dimensions for image resize
-    polyx = 1
-    polyy = 1  # order of polynomial plane fit to initially apply to raw image
-    n_channels = 1
-    # won't be changing which model is used once we have found the best one, so this is defined in the function
-
-    # ~~~~~~~~~~~~~~~~~~~~~MODEL SETTINGS ~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-    # preprocess the image
-    imarray = xyplanefit(imarray, polyx, polyy)  # apply plane fit
-    imarray_r = cv2.resize(imarray, dim, interpolation=cv2.INTER_NEAREST)
-    imnorm, minval, maxval = normalise(imarray_r)  # normalise to values between 0 and 1
-
-    def load_model(model_path: str, n_channels: int, device: str):
-        model = UNet(n_channels, **UNET_CONFIG)
-        model.load_state_dict(torch.load(model_path, map_location=device))
-        model.to(device)
-        model.eval()
-        return model
-
-    # Set up the device
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    # Load the trained model
-    if not os.path.exists(model_path):
-        raise FileNotFoundError(f"Model file not found: {model_path}")
-    loaded_model = load_model(model_path, n_channels, device)
-    # print("Model loaded successfully.")
-
-    def predict_on_image(model, image, device):
-        model.eval()
-        with torch.no_grad():
-            image_tensor = torch.tensor(image, dtype=torch.float32).unsqueeze(0)
-            image_tensor = image_tensor.unsqueeze(0).to(device)
-
-            output = model(image_tensor)
-            output_s = torch.sigmoid(output)
-            output_b = (output_s > 0.5).float()
-
-        return output_b.squeeze(0).cpu()
-
-    # apply model to image
-    predictedmask = predict_on_image(
-        loaded_model, imnorm, device
-    )  # shape [1, 256, 256]
-    predictedmask = predictedmask.squeeze(0)  # shape [256, 256]
-    predictedmask = predictedmask.numpy()
-    predictedmask_resize = cv2.resize(
-        predictedmask,
-        (imarray.shape[1], imarray.shape[0]),
-        interpolation=cv2.INTER_NEAREST,
-    )
-    predictedmask_swap = swap01(predictedmask_resize)
-    predictedmask_final = remove_small_zeros(predictedmask_swap, min_size=30)
-
-    return predictedmask_final
-
-
-def applymodel_mask_stack(imarray, model_path):
-
-    dim = (256, 256)  # dimensions for image resize
-    if imarray.ndim == 3:
-        originaldim = (
-            imarray.shape[2],
-            imarray.shape[1],
-        )  # have to use in this order for resize
-    else:
-        originaldim = (imarray.shape[1], imarray.shape[0])
-    polyx = 1
-    polyy = 1  # order of polynomial plane fit to initially apply to raw image
-    n_channels = 1
-    # won't be changing which model is used once we have found the best one, so this is defined in the function
-
-    if imarray.ndim == 3:
-        lenstack = imarray.shape[0]
-    else:
-        lenstack = 1
-
-    minvallist = []
-    datarangelist = []
-    imnormlist = []
-    for i in range(lenstack):
-        if imarray.ndim == 3:
-            imarrayi = imarray[i, :, :]
-        else:
-            imarrayi = imarray
-        imarray_planefit = xyplanefit(imarrayi, polyx, polyy)  # apply plane fit
-        imarray_r = cv2.resize(imarray_planefit, dim, interpolation=cv2.INTER_NEAREST)
-        imnorm, minval, datarange = normalise(imarray_r)
-
-        imnormlist.append(imnorm)
-        minvallist.append(minval)
-        datarangelist.append(datarange)
-
-    def load_model(model_path: str, n_channels: int, device: str):
-        model = UNet(n_channels, **UNET_CONFIG)
-        model.load_state_dict(torch.load(model_path, map_location=device))
-        model.to(device)
-        model.eval()
-        return model
-
-    # Set up the device
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    # Load the trained model
-    if not os.path.exists(model_path):
-        raise FileNotFoundError(f"Model file not found: {model_path}")
-    loaded_model = load_model(model_path, n_channels, device)
-    # print("Model loaded successfully.")
-
-    def predict_on_image(model, image, device):
-        model.eval()
-        with torch.no_grad():
-            image_tensor = torch.tensor(image, dtype=torch.float32).unsqueeze(0)
-            image_tensor = image_tensor.unsqueeze(0).to(device)
-
-            output = model(image_tensor)
-            output_s = torch.sigmoid(output)
-            output_b = (output_s > 0.5).float()
-
-        return output_b.squeeze(0).cpu()
-
-    # apply model to image
-    predictedmasklist = []
-    for imnorm, minval, datarange in zip(
-        imnormlist, minvallist, datarangelist, strict=False
-    ):
-        maskarray = predict_on_image(
-            loaded_model, imnorm, device
-        )  # shape [1, 256, 256]
-        maskarray_2D = maskarray.squeeze(0)  # shape [256, 256]
-        maskarray_np = maskarray_2D.numpy()
-
-        maskarray_resize = cv2.resize(
-            maskarray_np, originaldim, interpolation=cv2.INTER_NEAREST
-        )
-        maskarray_swap = swap01(maskarray_resize)
-        mask_final = remove_small_zeros(maskarray_swap, min_size=30)
-        predictedmasklist.append(mask_final)
-
-    return predictedmasklist
+    # Return original dimensionality
+    return result[0] if was_2d else result

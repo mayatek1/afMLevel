@@ -1,7 +1,12 @@
+"""Utility functions for afMLevel, including image processing and normalisation."""
+
+import os
+
 import numpy as np
+import torch
 from scipy.ndimage import generate_binary_structure, label
 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~UTILS~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+from afmlevel.unet import UNet
 
 
 def remove_small_zeros(arr, min_size=50):
@@ -95,3 +100,42 @@ def xyplanefit(imarray, polyx, polyy):
     r = r - pvals[:, np.newaxis]
 
     return r
+
+
+MODEL_CACHE = {}
+
+
+def load_model(
+    model_path: str, n_channels: int, device: torch.device, UNET_CONFIG
+) -> torch.nn.Module:
+    """
+    Load and cache trained U-Net models.
+
+    Parameters
+    ----------
+    model_path : str
+        Path to the .pth (state_dict)
+    n_channels : int
+        Number of input channels (usually 1)
+    device : torch.device
+        'cuda' or 'cpu'
+    UNET_CONFIG : dict
+        U-Net configuration (filter sizes etc)
+
+    Returns
+    -------
+    torch.nn.Module
+        Model loaded on the requested device.
+    """
+    key = (os.path.abspath(model_path), str(device))
+    if key in MODEL_CACHE:
+        return MODEL_CACHE[key]
+    if not os.path.exists(model_path):
+        raise FileNotFoundError(f"Model file not found: {model_path}")
+    model = UNet(n_channels, **UNET_CONFIG).to(device)
+    state = torch.load(model_path, map_location=device, weights_only=True)
+    model.load_state_dict(state)
+    model.to(device)
+    model.eval()
+    MODEL_CACHE[key] = model
+    return model

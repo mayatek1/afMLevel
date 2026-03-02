@@ -1,5 +1,63 @@
+"""
+U-Net model structure definition and loading utility for afMLevel.
+
+This module defines the UNet class for the mask and background models and provides a
+unified function to load the model with caching to optimise performance when processing
+multiple images or stacks.
+"""
+
+import os
+from typing import Dict, Tuple
+
 import torch
 import torch.nn as nn
+
+# Global model cache
+_MODEL_CACHE: Dict[Tuple[str, str], torch.nn.Module] = {}
+
+
+def load_unet_model(
+    model_path: str,
+    n_channels: int,
+    config: dict,
+    device: torch.device,
+) -> torch.nn.Module:
+    """
+    Unified model loader and cache for both mask and background U-Net models.
+
+    Parameters
+    ----------
+    model_path : str
+        Path to the .pth (state_dict)
+    n_channels : int
+        Number of input channels (usually 1)
+    config : dict
+        U-Net configuration (filter sizes etc)
+    device : torch.device
+        'cuda' or 'cpu'
+
+    Returns
+    -------
+    torch.nn.Module
+        Model loaded on the requested device.
+    """
+    key = (os.path.abspath(model_path), str(device))
+
+    if key in _MODEL_CACHE:
+        return _MODEL_CACHE[key]
+
+    if not os.path.exists(model_path):
+        raise FileNotFoundError(f"Model file not found: {model_path}")
+
+    model = UNet(n_channels, **config).to(device)
+
+    # Safe loading: requires your .pth to be a pure state_dict
+    state = torch.load(model_path, map_location=device, weights_only=True)
+    model.load_state_dict(state)
+    model.eval()
+
+    _MODEL_CACHE[key] = model
+    return model
 
 
 class UNet(nn.Module):
