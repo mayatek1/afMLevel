@@ -25,7 +25,7 @@ dependencies = [
   "scikit-image",
   "pandas",
   "matplotlib",
-  "pnanolocz_lib",
+  "pnanolocz",
 ]
 keywords = [
   # Core domain
@@ -134,7 +134,7 @@ multi_line_output = 3
 include_trailing_comma = true
 force_grid_wrap = 0
 combine_as_imports = true
-known_first_party = ["pnanolocz_lib"]
+known_first_party = ["pnanolocz"]
 known_third_party = ["numpy","scipy","matplotlib","torch","sklearn","skimage","pandas","PIL","cv2","pytorch_msssim"]
 
 [tool.ruff]

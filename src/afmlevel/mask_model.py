@@ -3,13 +3,17 @@ from typing import Any, List, Optional
 import cv2
 import numpy as np
 import torch
-from pnanolocz_lib.level_auto import apply_level
+from pnanolocz.level_auto import apply_level, apply_level_weighted
+from skimage.morphology import (
+    dilation,
+    disk,
+    erosion,
+    remove_small_holes,
+    remove_small_objects,
+)
 
 from afmlevel.unet import load_unet_model
 from afmlevel.utils import normalise, remove_small_zeros, swap01, xyplanefit
-
-# from afmlevel.post import swap01, remove_small_zeros  # adjust your import path
-# Ensure swap01 and remove_small_zeros are imported from wherever they live
 
 # ~~~~~~~~~~~~~~~~~~~~~MODEL SETTINGS ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -176,12 +180,341 @@ def ml_mask(
     return np.stack(out_masks, axis=0)
 
 
+def _perimeter_remove(bw2d: np.ndarray) -> np.ndarray:
+    """
+    Return the perimeter pixels of a binary image.
+
+    Direct analogue of MATLAB `bwmorph(bw, 'remove')`:
+    removes interior pixels and leaves only boundary pixels.
+
+    Parameters
+    ----------
+    bw2d : np.ndarray
+         2D binary array, dtype can be bool or uint8 {0,1} or bool.
+
+    Returns
+    -------
+    np.ndarray
+        2D binary array of the same shape, dtype bool (perimeter mask)
+    """
+    # Ensure boolean for morphology
+    bw_bool = bw2d > 0
+
+    # 8-connected 3×3 footprint
+    footprint = np.ones((3, 3), dtype=bool)
+
+    # Erode the foreground
+    eroded = erosion(bw_bool, footprint=footprint)
+
+    # Perimeter = fg AND NOT(eroded)
+    perimeter_bool = bw_bool & (~eroded)
+
+    # Return as bool
+    return perimeter_bool
+
+
+def ml_edges(
+    imarray: np.ndarray,
+    model_path: str,
+    device: Optional[str] = None,
+    threshold: float = 0.5,
+    polyx: int = 1,
+    polyy: int = 1,
+    min_size: int = 30,
+    area_thresh_objects: int = 100,
+    area_thresh_holes: int = 50,
+    dilate_disk_radius: int = 3,
+) -> np.ndarray:
+    """
+    Create edge mask using a trained U-Net model, followed by morphological operations.
+
+    Parameters
+    ----------
+    imarray : np.ndarray
+        (H, W) single image, or (N, H, W) stack (preferred). If (H, W, N) is passed,
+        call-side should transpose to NHW before passing here for best clarity.
+    model_path, device, threshold, polyx, polyy, min_size
+        Passed to `ml_mask`, which is expected to return a binary mask in NHW.
+    device : Optional[str]
+        'cuda' or 'cpu'; if None, auto-select CUDA if available. Passed to `ml_mask`.
+    threshold : float
+        Sigmoid probability threshold for binarisation. Passed to `ml_mask`.
+    polyx, polyy : int
+        Plane-fit polynomial orders. Passed to `ml_mask`.
+    min_size : int
+        Minimum 'hole' size to fill in remove_small_zeros (post-processing).
+        Passed to `ml_mask`.
+    area_thresh_objects : int
+        Minimum object size to keep (≈ bwareaopen(..., 100)).
+    area_thresh_holes : int
+        Maximum hole area to fill (≈ ~bwareaopen(~..., 50)).
+    dilate_disk_radius : int
+        Radius for disk structuring element in dilation (≈ strel('disk',3)).
+
+    Returns
+    -------
+    np.ndarray
+        Binary boolean mask. Shape matches input rank:
+        - input (H, W)  -> output (H, W)
+        - input (N, H, W) -> output (N, H, W)
+        Returned mask has value 1 for interior/background, and 0 for the detected
+        perimeter region.
+    """
+    # 1)  Normalize to NHW
+    imarray = np.array(imarray, np.float32, copy=False)
+    input_was_2d = imarray.ndim == 2
+    if input_was_2d:
+        img_nhw = imarray[None, ...]  # (1, H, W)
+    elif imarray.ndim == 3:
+        img_nhw = imarray  # assume NHW
+    else:
+        raise ValueError("imarray must be 2D (H,W) or 3D (N,H,W)")
+
+    # 2)  Generate ML mask with the `ml_mask` function.
+    ml_mask_result = ml_mask(
+        img_nhw, model_path, device, threshold, polyx, polyy, min_size
+    )
+
+    # 3) Invert before processing
+    ml_mask_invert = 1 - ml_mask_result  # NHW, int {0,1}
+
+    # 4) Apply MATLAB operations per-slice
+    N, H, W = ml_mask_invert.shape
+    out = np.zeros((N, H, W), dtype=bool)  # boolean for morphology
+
+    # correct new skimage semantics:
+    max_obj = max(0, area_thresh_objects - 1)
+    max_hole = max(0, area_thresh_holes - 1)
+
+    for i in range(N):
+        # Convert to boolean **here** (only inside morphology block)
+        bool_mask = ml_mask_invert[i].astype(bool)
+
+        # bwmorph('remove')
+        bool_mask = _perimeter_remove(bool_mask)
+
+        # bwareaopen(BW, 100) — remove small objects
+        if max_obj > 0:
+            bool_mask = remove_small_objects(
+                bool_mask, max_size=max_obj, connectivity=2
+            )
+
+        # ~bwareaopen(~BW, 50) — fill small holes
+        if max_hole > 0:
+            bool_mask = remove_small_holes(bool_mask, max_size=max_hole, connectivity=2)
+
+        # imdilate(BW, strel('disk',3))
+        bool_mask = dilation(bool_mask, footprint=disk(dilate_disk_radius))
+
+        # second round: bwareaopen + ~bwareaopen(~·)
+        if max_obj > 0:
+            bool_mask = remove_small_objects(
+                bool_mask, max_size=max_obj, connectivity=2
+            )
+        if max_hole > 0:
+            bool_mask = remove_small_holes(bool_mask, max_size=max_hole, connectivity=2)
+
+        # Store boolean
+        out[i] = bool_mask
+
+    # 5) Final inversion to match MATLAB's ~imgt output
+    result_bool = ~out
+
+    # Return mask as uint8 {0,1}
+    result = result_bool.astype(np.uint8)
+    # Restore original rank
+    if input_was_2d:
+        return result[0]
+    return result
+
+
+# Create a routines for iteratively applying the model and plane fits.
+# Uses the format of the `ROUTINES` dictionary in `pnanolocz.level_auto`.
+DEFAULT_ML_ROUTINES = {
+    "iterative ML mask": [
+        # Initial plane fit to raw image
+        {
+            "func": apply_level,
+            "polyx": 1,
+            "polyy": 1,
+            "method": "plane",
+        },
+        # First model application to get mask
+        {
+            "func": ml_mask,
+            "invert": True,
+        },
+        # Second plane fit to masked image
+        {
+            "func": apply_level,
+            "polyx": 1,
+            "polyy": 1,
+            "method": "plane",
+        },
+        # Second model application to get mask
+        {
+            "func": ml_mask,
+            "invert": True,
+        },
+        # Third plane fit to masked image
+        {
+            "func": apply_level,
+            "polyx": 1,
+            "polyy": 1,
+            "method": "plane",
+        },
+        # Third model application to get mask
+        {
+            "func": ml_mask,
+            "invert": True,
+        },
+        # Median line fit to masked image
+        {
+            "func": apply_level,
+            "polyx": 0,
+            "polyy": 0,
+            "method": "med_line",
+        },
+        # Plane fit in x direction to masked image
+        {
+            "func": apply_level,
+            "polyx": 1,
+            "polyy": 0,
+            "method": "plane",
+        },
+        # Fourth model application to get mask
+        {
+            "func": ml_mask,
+            "invert": True,
+        },
+        # Median line fit to masked image
+        {
+            "func": apply_level,
+            "polyx": 0,
+            "polyy": 0,
+            "method": "med_line",
+        },
+        # Second order plane fit in x direction to masked image
+        {
+            "func": apply_level,
+            "polyx": 2,
+            "polyy": 0,
+            "method": "plane",
+        },
+    ],
+    "ML mask": [
+        # Initial plane fit to raw image
+        {
+            "func": apply_level,
+            "polyx": 1,
+            "polyy": 1,
+            "method": "plane",
+        },
+        # First model application to get mask
+        {
+            "func": ml_mask,
+            "invert": True,
+        },
+        # Median line fit to masked image
+        {
+            "func": apply_level,
+            "polyx": 0,
+            "polyy": 0,
+            "method": "med_line",
+        },
+        # Second plane fit to masked image
+        {
+            "func": apply_level,
+            "polyx": 1,
+            "polyy": 1,
+            "method": "plane",
+        },
+    ],
+    "multi-plane-ML-it": [
+        # Initial plane fit to raw image
+        {
+            "func": apply_level,
+            "polyx": 1,
+            "polyy": 1,
+            "method": "plane",
+        },
+        # First model application to get mask
+        {
+            "func": ml_edges,
+            "invert": True,
+        },
+        # Second order weighted plane fit to masked image
+        {"func": apply_level_weighted, "polyx": 2, "polyy": 2, "method": "plane"},
+        # Second model application to get mask
+        {
+            "func": ml_edges,
+            "invert": True,
+        },
+        # Another second order weighted plane fit to masked image
+        {"func": apply_level_weighted, "polyx": 2, "polyy": 2, "method": "plane"},
+        # Third model application to get mask
+        {
+            "func": ml_edges,
+            "invert": True,
+        },
+        # Another second order weighted plane fit to masked image
+        {"func": apply_level_weighted, "polyx": 2, "polyy": 2, "method": "plane"},
+        # Median line fit to masked image
+        {
+            "func": apply_level,
+            "polyx": 0,
+            "polyy": 0,
+            "method": "med_line",
+        },
+        # Fourth model application to get mask
+        {
+            "func": ml_edges,
+            "invert": True,
+        },
+        # Another second order weighted plane fit to masked image
+        {"func": apply_level_weighted, "polyx": 2, "polyy": 2, "method": "plane"},
+        # Median line fit to masked image
+        {
+            "func": apply_level,
+            "polyx": 0,
+            "polyy": 0,
+            "method": "med_line",
+        },
+    ],
+    "multi-plane-ML": [
+        # Initial plane fit to raw image
+        {
+            "func": apply_level,
+            "polyx": 1,
+            "polyy": 1,
+            "method": "plane",
+        },
+        # First model application to get mask
+        {
+            "func": ml_edges,
+            "invert": True,
+        },
+        # Second order weighted plane fit to masked image
+        {"func": apply_level_weighted, "polyx": 2, "polyy": 2, "method": "plane"},
+        # Median line fit to masked image
+        {
+            "func": apply_level,
+            "polyx": 0,
+            "polyy": 0,
+            "method": "med_line",
+        },
+    ],
+}
+
+
 def level_ml_mask(
     imarray: np.ndarray,
     model_path: str,
     device: Optional[str] = None,
     threshold: float = 0.5,
     min_size: int = 30,
+    method: str = "iterative ML mask",
+    ml_routines: dict | None = None,
 ) -> np.ndarray[Any, np.dtype[np.float64]]:
     """
     AFM leveling using a learned mask and a routine of plane/median fits.
@@ -214,7 +547,6 @@ def level_ml_mask(
         Minimum component size used by `ml_mask` in post-processing (e.g.,
         remove_small_zeros).
 
-
     Returns
     -------
     np.ndarray
@@ -225,86 +557,18 @@ def level_ml_mask(
 
     Notes
     -----
-    - The raw output of `ml_mask` (probabilities or boolean) is converted to
-      a boolean mask by thresholding at 0.5 if floating, then **inverted** so that
-      True = foreground (matching the mask polarity expected by pnanolocz_lib filters).
-    - If `ml_mask` returns shape (1, H, W), it is squeezed to (H, W).
+    - The raw outputs of `ml_mask` and `ml_edges` (probabilities or binary) is
+      converted to a boolean mask by thresholding at 0.5 if floating, then
+      **inverted** so that True = foreground (matching the mask polarity expected
+      by pnanolocz filters).
+    - If `ml_mask`, `ml_edges`returns shape (1, H, W), it is squeezed to (H, W).
     """
-    # Create a routine for iteratively applying the model and plane fits.
-    # Uses the format of the `ROUTINES` dictionary in `pnanolocz_lib.level_auto`.
-    ml_routine = {
-        "iterative ML mask": [
-            # First model application to get mask
-            {
-                "func": ml_mask,
-                "model_path": model_path,
-                "invert": True,
-            },
-            # Second plane fit to masked image
-            {
-                "func": apply_level,
-                "polyx": 1,
-                "polyy": 1,
-                "method": "plane",
-            },
-            # Second model application to get mask
-            {
-                "func": ml_mask,
-                "model_path": model_path,
-                "invert": True,
-            },
-            # Third plane fit to masked image
-            {
-                "func": apply_level,
-                "polyx": 1,
-                "polyy": 1,
-                "method": "plane",
-            },
-            # Third model application to get mask
-            {
-                "func": ml_mask,
-                "model_path": model_path,
-                "invert": True,
-            },
-            # Median line fit to masked image
-            {
-                "func": apply_level,
-                "polyx": 0,
-                "polyy": 0,
-                "method": "med_line",
-            },
-            # Plane fit in x direction to masked image
-            {
-                "func": apply_level,
-                "polyx": 1,
-                "polyy": 0,
-                "method": "plane",
-            },
-            # Fourth model application to get mask
-            {
-                "func": ml_mask,
-                "model_path": model_path,
-                "invert": True,
-            },
-            # Median line fit to masked image
-            {
-                "func": apply_level,
-                "polyx": 0,
-                "polyy": 0,
-                "method": "med_line",
-            },
-            # Second order plane fit in x direction to masked image
-            {
-                "func": apply_level,
-                "polyx": 2,
-                "polyy": 0,
-                "method": "plane",
-            },
-        ],
-    }
+    routines = DEFAULT_ML_ROUTINES if ml_routines is None else ml_routines
 
-    if "iterative ML mask" not in ml_routine:
-        raise ValueError("Unknown routine 'iterative ML mask'")
+    if method not in routines:
+        raise ValueError(
+            "Unknown routine method. Available methods: " + ", ".join(routines.keys())
+        )
 
     # ----- Normalise input shape and dtype -----
     arr = np.asarray(imarray)
@@ -343,7 +607,8 @@ def level_ml_mask(
     )
 
     result = arr.copy()
-    steps = ml_routine["iterative ML mask"]
+
+    steps = routines[method]
     N = result.shape[0]
 
     for i in range(N):
@@ -383,6 +648,37 @@ def level_ml_mask(
                     fg_mask_bool = ~bg_mask
                 else:
                     fg_mask_bool = bg_mask
+                continue
+            elif func is ml_edges:
+                # --- Call ml_edges on the current image ---
+                # ml_edges handles float conversion & normalisation internally;
+                #  we pass float32 for speed
+                img_for_model = np.asarray(img, dtype=np.float32, order="C")
+                # Expect ml_edges to return (H,W) uint8 {0,1} or bool mask
+                edge_mask = ml_edges(
+                    img_for_model,
+                    model_path=model_path,
+                    device=str(torch_device),
+                    threshold=threshold,
+                    min_size=min_size,
+                )
+                edge_mask = np.asarray(edge_mask)
+
+                # Convert to boolean
+                if edge_mask.dtype == np.uint8 or np.issubdtype(
+                    edge_mask.dtype, np.integer
+                ):
+                    edge_mask = edge_mask.astype(bool)
+                elif np.issubdtype(edge_mask.dtype, np.floating):
+                    edge_mask = edge_mask > 0.5
+                elif edge_mask.dtype != bool:
+                    edge_mask = edge_mask.astype(bool)
+
+                # Invert to get foreground (True = features)
+                if step.get("invert", True):
+                    fg_mask_bool = ~edge_mask
+                else:
+                    fg_mask_bool = edge_mask
                 continue
 
             # --- Otherwise it's a leveling step ---

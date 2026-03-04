@@ -3,7 +3,7 @@ Background prediction and leveling using a trained U-Net model.
 
 This module implements the `level_ml_bg` function, which applies a trained U-Net model
 to predict the background (tilt, scan line variation and scanning artifacts) of AFM
-images and level them by stubtracting this background from the original data. The
+images and level them by subtracting this background from the original data. The
 function can handle both single 2D images and 3D stacks, with options for returning
 either the predicted background or the levelled image. The implementation includes
 efficient tiling for large images, caching of the loaded model for performance, and
