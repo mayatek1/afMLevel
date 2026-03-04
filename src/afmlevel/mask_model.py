@@ -504,6 +504,64 @@ DEFAULT_ML_ROUTINES = {
             "method": "med_line",
         },
     ],
+    "multi-plane-ML-it-line": [
+        # Initial plane fit to raw image
+        {
+            "func": apply_level,
+            "polyx": 1,
+            "polyy": 1,
+            "method": "plane",
+        },
+        # Median line fit
+        {
+            "func": apply_level,
+            "polyx": 0,
+            "polyy": 0,
+            "method": "med_line",
+        },
+        # First model application to get mask
+        {
+            "func": ml_edges,
+            "invert": True,
+        },
+        # Second order weighted plane fit to masked image
+        {"func": apply_level_weighted, "polyx": 2, "polyy": 2, "method": "plane"},
+        # Second model application to get mask
+        {
+            "func": ml_edges,
+            "invert": True,
+        },
+        # Another second order weighted plane fit to masked image
+        {"func": apply_level_weighted, "polyx": 2, "polyy": 2, "method": "plane"},
+        # Third model application to get mask
+        {
+            "func": ml_edges,
+            "invert": True,
+        },
+        # Another second order weighted plane fit to masked image
+        {"func": apply_level_weighted, "polyx": 2, "polyy": 2, "method": "plane"},
+        # Median line fit to masked image
+        {
+            "func": apply_level,
+            "polyx": 0,
+            "polyy": 0,
+            "method": "med_line",
+        },
+        # Fourth model application to get mask
+        {
+            "func": ml_edges,
+            "invert": True,
+        },
+        # Another second order weighted plane fit to masked image
+        {"func": apply_level_weighted, "polyx": 2, "polyy": 2, "method": "plane"},
+        # Median line fit to masked image
+        {
+            "func": apply_level,
+            "polyx": 0,
+            "polyy": 0,
+            "method": "med_line",
+        },
+    ],
 }
 
 
@@ -517,13 +575,35 @@ def level_ml_mask(
     ml_routines: dict | None = None,
 ) -> np.ndarray[Any, np.dtype[np.float64]]:
     """
-    AFM leveling using a learned mask and a routine of plane/median fits.
+    AFM leveling using a learned mask and routines of plane/median fits.
 
-    This routine alternates between predicting a mask with a trained model
-    (`ml_mask`) and applying leveling operations (`apply_level`) while
-    respecting the mask. This is based on the iterative 1nm routine from the
-    Nanolocz software library (Python-Nanolocz-Library version:
-    https://github.com/derollins/Python-Nanolocz-Library).
+    The routines are defined in the `DEFAULT_ML_ROUTINES` dictionary, which specifies
+    sequences of operations (plane fits, median line fits, and model applications) to
+    be applied iteratively. The model applications use the `ml_mask` and `ml_edges`
+    functions defined above, which apply the trained U-Net model to predict masks and
+    edge masks, respectively. The leveling functions are imported from
+    `pnanolocz.level_auto` (https://github.com/derollins/Python-Nanolocz-Library)
+    and are applied according to the specified routine.
+
+    Available methods (keys of `DEFAULT_ML_ROUTINES`):
+    - "iterative ML mask": multiple iterations of ml_mask and plane fits, ending with
+      a median line fit.
+    - "ML mask": single ml_mask application followed by a median line fit and plane
+      fit.
+    - "multi-plane-ML-it": multiple iterations of ml_edges and second-order weighted
+      plane fits, ending with a median line fit.
+    - "multi-plane-ML": single ml_edges application followed by a second-order weighted
+      plane fit and a median line fit.
+    - "multi-plane-ML-it-line": similar to "multi-plane-ML-it" but with additional
+      median line fit after th initial plane fit.
+
+    These routines are adapted from the auto level routines from the Nanolocz software
+    libraries (Python-Nanolocz-Library version:
+    https://github.com/derollins/Python-Nanolocz-Library). The "iterative ML mask"
+    routine is a direct analogue of the original iterative routines but with the ML
+    generated mask replacing the histogram based masks in the original. The multi-plane
+    routines are adaptations of the mulit-plane routines an use edge masks created from
+    the ML model generated mask, processed to mask region edges.
 
     **Mask polarity**: `ml_mask` return a binary *background* mask
     (1 = background, 0 = feature). Downstream filters (e.g., `apply_level`) expect a
@@ -557,11 +637,10 @@ def level_ml_mask(
 
     Notes
     -----
-    - The raw outputs of `ml_mask` and `ml_edges` (probabilities or binary) is
-      converted to a boolean mask by thresholding at 0.5 if floating, then
-      **inverted** so that True = foreground (matching the mask polarity expected
-      by pnanolocz filters).
-    - If `ml_mask`, `ml_edges`returns shape (1, H, W), it is squeezed to (H, W).
+    - The raw outputs of `ml_mask` and `ml_edges` (binary) is converted to a boolean
+      mask then **inverted** so that True = foreground (matching the mask polarity
+      expected by pnanolocz filters).
+    - If the input image was 2D, the internal batch dimension is removed before returning.
     """
     routines = DEFAULT_ML_ROUTINES if ml_routines is None else ml_routines
 
