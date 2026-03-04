@@ -7,7 +7,7 @@ images and level them by subtracting this background from the original data. The
 function can handle both single 2D images and 3D stacks, with options for returning
 either the predicted background or the levelled image. The implementation includes
 efficient tiling for large images, caching of the loaded model for performance, and
-handling of normalization and denormalization to ensure accurate predictions.
+handling of normalisation and denormalisation to ensure accurate predictions.
 
 The `level_ml_bg` function is the main entry point which takes an AFM image or stack,
 applies the model, and returns the processed result.
@@ -16,6 +16,12 @@ Authors
 -------
 Maya Tekchandani, University of Leeds (Model training and Python implementation)
 Daniel E. Rollins, University of Leeds (Python implementation and optimisation)
+
+AI Transparency Note
+--------------------
+AI-based tools were used in certain parts of this module for limited typing/formatting
+assistance and for providing debugging, refactoring and documentation suggestions. All
+code paths, algorithms, and final behaviour were reviewed and validated by the authors.
 """
 
 import math

@@ -15,7 +15,7 @@ from skimage.morphology import (
 from afmlevel.unet import load_unet_model
 from afmlevel.utils import normalise, remove_small_zeros, swap01, xyplanefit
 
-# ~~~~~~~~~~~~~~~~~~~~~MODEL SETTINGS ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~~~~~~~ MODEL SETTINGS ~~~~~~~~~~~~~~~~~~~~~
 
 UNET_CONFIG = {
     "filtersize1": 7,
@@ -23,6 +23,8 @@ UNET_CONFIG = {
     "leakyrelu": False,
     "dropoutprob": 0,
 }
+
+# ~~~~~~~~~~~~~~~~~~ HELPER FUNCTIONS ~~~~~~~~~~~~~~~~~~~~~
 
 
 def _predict_mask_256(
@@ -99,6 +101,9 @@ def _process_single_image_mask(
 
     # Ensure uint8 {0,1}
     return (mask_final > 0).astype(np.uint8)
+
+
+# ~~~~~~~~~~~~~~~~~~ ML MASK GENERATION ~~~~~~~~~~~~~~~~~~~~~
 
 
 def ml_mask(
@@ -327,6 +332,8 @@ def ml_edges(
         return result[0]
     return result
 
+
+# ~~~~~~~~~~~~~~~~~~ ML LEVELLING ROUTINES ~~~~~~~~~~~~~~~~~~~~~
 
 # Create a routines for iteratively applying the model and plane fits.
 # Uses the format of the `ROUTINES` dictionary in `pnanolocz.level_auto`.
@@ -564,6 +571,8 @@ DEFAULT_ML_ROUTINES = {
     ],
 }
 
+# ~~~~~~~~~~~~~~~~~~~~~~~ LEVELING FUNCTION ~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 
 def level_ml_mask(
     imarray: np.ndarray,
@@ -640,7 +649,8 @@ def level_ml_mask(
     - The raw outputs of `ml_mask` and `ml_edges` (binary) is converted to a boolean
       mask then **inverted** so that True = foreground (matching the mask polarity
       expected by pnanolocz filters).
-    - If the input image was 2D, the internal batch dimension is removed before returning.
+    - If the input image was 2D, the internal batch dimension is removed before
+      returning.
     """
     routines = DEFAULT_ML_ROUTINES if ml_routines is None else ml_routines
 

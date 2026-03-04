@@ -4,6 +4,12 @@ U-Net model structure definition and loading utility for afMLevel.
 This module defines the UNet class for the mask and background models and provides a
 unified function to load the model with caching to optimise performance when processing
 multiple images or stacks.
+
+AI Transparency Note
+--------------------
+AI-based tools were used in certain parts of this module for limited typing/formatting
+assistance and for providing debugging, refactoring and documentation suggestions. All
+code paths, algorithms, and final behaviour were reviewed and validated by the authors.
 """
 
 import os

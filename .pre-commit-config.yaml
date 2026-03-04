@@ -46,7 +46,7 @@ repos:
     hooks:
       - id: markdownlint-cli2
         args: ['--fix','--config','.markdownlint.yaml']
-        exclude: (^docs/|^notebooks/|^LICENSE$)
+        exclude: (^docs/|^notebooks/|^LICENSE$|CITATION.cff)
 
   # --- Codespell ---
   - repo: https://github.com/codespell-project/codespell
@@ -54,4 +54,4 @@ repos:
     hooks:
       - id: codespell
         types: [text]
-        exclude: (^docs/_build/|^tests/resources/|^build/|^dist/|^notebooks/|^LICENSE$)
+        exclude: (^docs/_build/|^tests/resources/|^build/|^dist/|^notebooks/|^LICENSE$|CITATION.cff)
