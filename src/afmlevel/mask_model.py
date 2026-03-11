@@ -14,7 +14,9 @@ from skimage.morphology import (
 
 from afmlevel.unet import load_unet_model
 from afmlevel.utils import normalise, remove_small_zeros, swap01, xyplanefit
+import logging
 
+logger = logging.getLogger(__name__)
 # ~~~~~~~~~~~~~~~~~~~~~ MODEL SETTINGS ~~~~~~~~~~~~~~~~~~~~~
 
 UNET_CONFIG = {
@@ -38,10 +40,12 @@ def _predict_mask_256(
 
     Returns (256, 256) np.uint8 array with {0,1}.
     """
-    assert image_256_norm.shape == (
-        256,
-        256,
-    ), f"Expected (256,256), got {image_256_norm.shape}"
+    if image_256_norm.shape != (256, 256):
+        logger.error(
+            "Mask predict got wrong shape: %s (expect 256x256)", image_256_norm.shape
+        )
+        raise AssertionError(f"Expected (256,256), got {image_256_norm.shape}")
+
     # Ensure dtype float32 and contiguous layout
     image_256_norm = np.ascontiguousarray(image_256_norm, dtype=np.float32)
 
@@ -52,6 +56,7 @@ def _predict_mask_256(
         )  # [1,1,256,256]
         logits = model(x)  # [1,1,256,256]
         probs = torch.sigmoid(logits)  # [1,1,256,256]
+        logger.debug("Mask logits->sigmoid done (threshold=%.2f)", threshold)
         binary = (probs > threshold).to(torch.uint8)  # [1,1,256,256] uint8
         mask = (
             binary.squeeze(0).squeeze(0).detach().cpu().numpy()
@@ -142,6 +147,10 @@ def ml_mask(
         Same leading shape as input. Binary masks with values {0,1}, dtype uint8.
     """
     if imarray.ndim not in (2, 3):
+        logger.error(
+            "Invalid imarray rank for ml_mask: shape=%s",
+            getattr(imarray, "shape", None),
+        )
         raise ValueError(f"imarray must be 2D or 3D, got {imarray.shape}")
 
     # Ensure float32 input for consistent numeric path
@@ -152,6 +161,14 @@ def ml_mask(
         device
         if device is not None
         else ("cuda" if torch.cuda.is_available() else "cpu")
+    )
+
+    logger.info(
+        "ml_mask start: shape=%s device=%s threshold=%.2f min_size=%d",
+        imarray.shape,
+        torch_device,
+        threshold,
+        min_size,
     )
 
     # Load model once
@@ -654,7 +671,16 @@ def level_ml_mask(
     """
     routines = DEFAULT_ML_ROUTINES if ml_routines is None else ml_routines
 
+    logger.info(
+        "level_ml_mask start: method=%s device=%s threshold=%.2f min_size=%d",
+        method,
+        device,
+        threshold,
+        min_size,
+    )
+
     if method not in routines:
+        logger.error("Unknown routine method: %s", method)
         raise ValueError(
             "Unknown routine method. Available methods: " + ", ".join(routines.keys())
         )
@@ -708,6 +734,9 @@ def level_ml_mask(
             func = step["func"]
 
             if func is ml_mask:
+                logger.debug(
+                    "Routine step: ml_mask (invert=%s)", step.get("invert", True)
+                )
                 # --- Call ml_mask on the current image ---
                 # ml_mask handles float conversion & normalisation internally;
                 #  we pass float32 for speed
@@ -739,6 +768,9 @@ def level_ml_mask(
                     fg_mask_bool = bg_mask
                 continue
             elif func is ml_edges:
+                logger.debug(
+                    "Routine step: ml_edges (invert=%s)", step.get("invert", True)
+                )
                 # --- Call ml_edges on the current image ---
                 # ml_edges handles float conversion & normalisation internally;
                 #  we pass float32 for speed
@@ -773,6 +805,12 @@ def level_ml_mask(
             # --- Otherwise it's a leveling step ---
             # Pass the foreground mask to apply_level
             # NOTE: apply_level is assumed to accept a mask where True means foreground
+
+            logger.debug(
+                "Routine step: %s with args=%s",
+                getattr(func, "__name__", str(func)),
+                {k: v for k, v in step.items() if k not in ("func", "invert")},
+            )
             img = func(
                 img,
                 mask=fg_mask_bool,
@@ -783,4 +821,8 @@ def level_ml_mask(
         result[i] = img
 
     # Return original dimensionality
+    logger.info(
+        "level_ml_mask done: returning %s",
+        "2D frame" if was_2d else f"stack with shape {result.shape}",
+    )
     return result[0] if was_2d else result

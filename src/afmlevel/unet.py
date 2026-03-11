@@ -17,7 +17,9 @@ from typing import Dict, Tuple
 
 import torch
 import torch.nn as nn
+import logging
 
+logger = logging.getLogger(__name__)
 # Global model cache
 _MODEL_CACHE: Dict[Tuple[str, str], torch.nn.Module] = {}
 
@@ -50,19 +52,29 @@ def load_unet_model(
     key = (os.path.abspath(model_path), str(device))
 
     if key in _MODEL_CACHE:
+        logger.debug("Reusing cached UNet for key=%s", key)
         return _MODEL_CACHE[key]
 
     if not os.path.exists(model_path):
+        logger.error("Model file not found: %s", model_path)
         raise FileNotFoundError(f"Model file not found: {model_path}")
 
+    logger.info(
+        "Loading UNet (n_channels=%s, device=%s, config=%s)",
+        n_channels,
+        device,
+        config,
+    )
     model = UNet(n_channels, **config).to(device)
 
     # Safe loading: requires your .pth to be a pure state_dict
     state = torch.load(model_path, map_location=device, weights_only=True)
     model.load_state_dict(state)
     model.eval()
+    logger.debug("UNet loaded & set to eval() from %s", model_path)
 
     _MODEL_CACHE[key] = model
+    logger.info("Model loaded & cached: %s", model_path)
     return model
 
 

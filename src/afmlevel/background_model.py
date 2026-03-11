@@ -32,7 +32,9 @@ import torch
 
 from afmlevel.unet import load_unet_model
 from afmlevel.utils import denormalise, linefit, normalise, xyplanefit
+import logging
 
+logger = logging.getLogger(__name__)
 # ~~~~~~~~~~~~~~~~~~~~~ MODEL SETTINGS ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 UNET_CONFIG = {
@@ -67,6 +69,7 @@ def _split_into_tiles(imnorm: np.ndarray) -> Tuple[List[np.ndarray], Dict[str, i
     mirror_all = np.concatenate((mirror_lr, np.flipud(mirror_lr)), axis=0)
 
     if imnorm.shape == (256, 256):
+        logger.debug("Tiling mode=256 (single tile)")
         arrays = [imnorm]
         meta = {
             "mode": 256,
@@ -75,6 +78,7 @@ def _split_into_tiles(imnorm: np.ndarray) -> Tuple[List[np.ndarray], Dict[str, i
         }
 
     elif imnorm.shape == (512, 512):
+        logger.debug("Tiling mode=512 (4 interleaved tiles)")
         arrays = [
             imnorm[0::2, 0::2],
             imnorm[0::2, 1::2],
@@ -84,6 +88,7 @@ def _split_into_tiles(imnorm: np.ndarray) -> Tuple[List[np.ndarray], Dict[str, i
         meta = {"mode": 512, "h": h, "w": w}
 
     else:
+        logger.debug("Tiling mode=general (mirror-pad to multiples of 256)")
         hr = 256 * math.ceil(h / 256)  # rounded up to nearest multiple of 256
         wr = 256 * math.ceil(w / 256)
         hj = int(hr / 256)
@@ -171,6 +176,7 @@ def _predict_tiles(
     """
     preds = []
     model.eval()
+    logger.debug("Predicting %d tiles on device=%s", len(arrays), device)
     with torch.no_grad():
         for image in arrays:
             # Expect model input: [B, C, H, W] with C=1
@@ -187,7 +193,7 @@ def _predict_tiles(
 def _process_single_image(
     model: torch.nn.Module,
     image: np.ndarray,
-    lineorder: int,
+    line_order: int,
     polyx: int = 1,
     polyy: int = 1,
 ) -> Tuple[np.ndarray, np.ndarray]:
@@ -200,7 +206,7 @@ def _process_single_image(
         Loaded U-Net model for background prediction.
     image : np.ndarray
         Single 2D AFM image to be processed.
-    lineorder : int
+    line_order : int
         Polynomial order for the final line fit.
     polyx : int, optional
         Polynomial order for the initial plane fit in x-direction (default is 1).
@@ -216,6 +222,14 @@ def _process_single_image(
     im_planefit = xyplanefit(image, polyx, polyy)
     imnorm, minval, datarange = normalise(im_planefit)
 
+    if logger.isEnabledFor(logging.DEBUG):
+        logger.debug(
+            "Processing single image: planefit shape=%s min=%.3f max=%.3f",
+            im_planefit.shape,
+            im_planefit.min(),
+            im_planefit.max(),
+        )
+
     # Split -> predict -> stitch
     arrays, meta = _split_into_tiles(imnorm)
     tiles_pred = _predict_tiles(model, arrays, device=next(model.parameters()).device)
@@ -223,7 +237,7 @@ def _process_single_image(
 
     # Denormalise and final line fit
     BG_denorm = denormalise(BGstitched, minval, datarange)
-    predictedBG_linefit = linefit(BG_denorm, lineorder)
+    predictedBG_linefit = linefit(BG_denorm, line_order)
 
     # Leveled image
     predictedLev = im_planefit - predictedBG_linefit
@@ -235,7 +249,7 @@ def _process_single_image(
 
 def level_ml_bg(
     imarray: np.ndarray,
-    lineorder: int,
+    line_order: int,
     model_path: str,
     background: bool = False,
     zero_median: bool = True,
@@ -248,7 +262,7 @@ def level_ml_bg(
     ----------
     imarray : np.ndarray
         Input raw AFM image (H, W) or stack (N, H, W).
-    lineorder : int
+    line_order : int
         Polynomial order for the final line fit.
     model_path : str
         Path to the trained model (.pth).
@@ -268,6 +282,7 @@ def level_ml_bg(
         If input is 3D: returns (N, H, W)
     """
     if imarray.ndim not in (2, 3):
+        logger.error("Invalid imarray rank: shape=%s", getattr(imarray, "shape", None))
         raise ValueError(f"imarray must be 2D or 3D, got shape {imarray.shape}")
 
     # Select device
@@ -276,6 +291,13 @@ def level_ml_bg(
         if device is not None
         else ("cuda" if torch.cuda.is_available() else "cpu")
     )
+    logger.info(
+        "level_ml_bg start: shape=%s device=%s line_order=%d background=%s",
+        imarray.shape,
+        torch_device,
+        line_order,
+        background,
+    )
 
     # Load model once
     n_channels = 1
@@ -283,7 +305,8 @@ def level_ml_bg(
 
     # Process 2D
     if imarray.ndim == 2:
-        predictedBG, predictedLev = _process_single_image(model, imarray, lineorder)
+        logger.debug("Processing single image (H,W)=%s", imarray.shape)
+        predictedBG, predictedLev = _process_single_image(model, imarray, line_order)
         return predictedBG if background else predictedLev
 
     # Process 3D stack
@@ -291,13 +314,21 @@ def level_ml_bg(
     BG_list = []
     Lev_list = []
     for i in range(N):
-        predictedBG, predictedLev = _process_single_image(model, imarray[i], lineorder)
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug("Processing slice %d/%d", i + 1, N)
+        predictedBG, predictedLev = _process_single_image(model, imarray[i], line_order)
         BG_list.append(predictedBG)
         if zero_median:
             median = np.median(predictedLev)
             predictedLev = predictedLev - median
         Lev_list.append(predictedLev)
-
+    logger.info("All slices processed.")
     BG_stack = np.stack(BG_list, axis=0)
     Lev_stack = np.stack(Lev_list, axis=0)
+
+    logger.info(
+        "level_ml_bg done: returning %s stack of shape %s",
+        "background" if background else "levelled",
+        (BG_stack if background else Lev_stack).shape,
+    )
     return BG_stack if background else Lev_stack
