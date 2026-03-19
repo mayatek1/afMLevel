@@ -15,6 +15,7 @@ Thumbs.db
 
 #Model files
 *.pth
+models/
 
 # Distribution / packaging
 *.egg-info/
