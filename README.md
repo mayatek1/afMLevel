@@ -6,32 +6,23 @@
 
 A python package for running two separate models for automatic levelling of AFM images. The functions provided are:
 
-* **ml\_background(): MLBackground U-Net model**
-* **ml\_mask(): MLMask U-Net model** 
-* **level\_ml\_mask(): function for levelling with MLMask**
+* ml_background(): MLBackground U-Net model
+* ml_mask(): MLMask U-Net model
+* level_ml\_mask(): function for levelling with MLMask
 
 
+MLBackground detects the noise background and subtracts this from the raw image to give the levelled image (input: raw AFM image, output: levelled image or background). 
 
-**MLBackground detects the noise background and subtracts this from the raw image to give the levelled image (input: raw AFM image, output: levelled image or background).** 
+MLMask detects the image features and produces a binary segmentation map of the features (input: raw image, output: binary mask). 
 
-
-
-**MLMask detects the image features and produces a binary segmentation map of the features (input: raw image, output: binary mask).** 
-
-
-
-**Level MLMask uses MLMask within auto-levelling routines as an alternative to generating the mask by thresholding** **(e.g. by Otsu’s method, using n\*standard deviation or using a fixed value). The routines available for use with MLMask are:**
+Level MLMask uses MLMask within auto-levelling routines as an alternative to generating the mask by thresholding (e.g. by Otsu’s method, using n\*standard deviation or using a fixed value). The routines available for use with MLMask are:
 
 * MLMask 
-* **iterative MLMask** 
-* **multi-plane MLMask**
+* iterative MLMask 
+* multi-plane MLMask
 * multi-plane MLMask + line
 
-
-
-!\[Model overviews](README\_image1.png)
-
-
+![Model overviews](README_image1.png)
 
 Jupyter notebooks are provided to demonstrate using each model.
 
@@ -39,26 +30,16 @@ Jupyter notebooks are provided to demonstrate using each model.
 
 ## **Quick-start guide**
 
-**The model paths are available via the link below:**
-
-**https://leeds365-my.sharepoint.com/:f:/g/personal/pymte\_leeds\_ac\_uk/IgCh5DkBDFHvT5biEQX697Z1AUvnJBeAwPvkf\_tlK\_w2xtY?e=UoKwrc**
-
-
-
 ### Create new python environment
 
 In powershell:
 
 ```python
 conda create -n afmlevelenv python=3.11
-
 conda activate afmlevelenv
-
-
+```
 
 ### Create a new folder and download afmlevel files into this
-
-
 
 #### Download python files containing the main functions and dependencies
 
@@ -66,8 +47,6 @@ conda activate afmlevelenv
 * unet.py
 * mask\_model.py
 * background\_model.py
-
-
 
 #### Download model paths
 
@@ -77,7 +56,6 @@ conda activate afmlevelenv
 
 * MaskModel.pth
 * BGModel.pth
-
 
 
 #### If using demo: Download demo notebooks 
@@ -105,7 +83,7 @@ In powershell (within afmlevelevn):
 cd \\path\\to\\afmlevelfolder
 
 jupyter notebook
-
+```
 
 
 Navigate to notebook and follow the instructions within. Options: 
