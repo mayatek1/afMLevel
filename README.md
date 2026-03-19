@@ -4,7 +4,7 @@
 
 ## **Overview**
 
-A python package for running two separate models for automatic levelling of AFM images. The functions provided are:
+A python package for running two separate models for automatic levelling of AFM images: MLMask and MLBackground. The functions provided are:
 
 * **ml_background():** MLBackground U-Net model
 * **ml_mask():** MLMask U-Net model
