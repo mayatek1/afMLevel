@@ -45,14 +45,14 @@ conda activate afmlevelenv
 
 * utils.py
 * unet.py
-* mask\_model.py
-* background\_model.py
+* mask_model.py
+* background_model.py
 
 #### Download model paths
 
 **The model paths are available via the link below:**
 
-**https://leeds365-my.sharepoint.com/:f:/g/personal/pymte\_leeds\_ac\_uk/IgCh5DkBDFHvT5biEQX697Z1AUvnJBeAwPvkf\_tlK\_w2xtY?e=UoKwrc**
+https://leeds365-my.sharepoint.com/:f:/g/personal/pymte_leeds_ac_uk/IgCh5DkBDFHvT5biEQX697Z1AU6F9GHF29ZBatKf_COdTlg?e=3QhYPp
 
 * MaskModel.pth
 * BGModel.pth
@@ -76,7 +76,7 @@ conda activate afmlevelenv
 
 #### If using demo: Open Jupyter Notebook
 
-In powershell (within afmlevelevn):
+In powershell (within afmlevelenv):
 
 ```python
 
@@ -92,7 +92,7 @@ Navigate to notebook and follow the instructions within. Options:
 * movie-demo.ipynb
 
 
-All functions take a NumPy array as the input (2D - single image; 3D - movie stack) and output the result as a NumPy array. AFM files can be converted to np arrays via existing software such as afmreader. The demo notebooks also give an example of converting from AFM files or tiffs to np arrays.** 
+All functions take a NumPy array as the input (2D - single image; 3D - movie stack) and output the result as a NumPy array. AFM files can be converted to np arrays via existing software such as afmreader. The demo notebooks also give an example of converting from AFM files or tiffs to np arrays. 
 
 
 
