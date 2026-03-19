@@ -6,9 +6,9 @@
 
 A python package for running two separate models for automatic levelling of AFM images. The functions provided are:
 
-* ml_background(): MLBackground U-Net model
-* ml_mask(): MLMask U-Net model
-* level_ml\_mask(): function for levelling with MLMask
+* **ml_background():** MLBackground U-Net model
+* **ml_mask():** MLMask U-Net model
+* **level_ml\_mask():** function for levelling with MLMask
 
 
 MLBackground detects the noise background and subtracts this from the raw image to give the levelled image (input: raw AFM image, output: levelled image or background). 
