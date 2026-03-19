@@ -1,10 +1,8 @@
-# afMLevel:
-
-## AFM Machine Learning Levelling
+# afMLevel: AFM Machine Learning Levelling
 
 
 
-### **Overview**
+## **Overview**
 
 A python package for running two separate models for automatic levelling of AFM images. The functions provided are:
 
@@ -31,7 +29,7 @@ A python package for running two separate models for automatic levelling of AFM 
 
 
 
-**!\[Model overviews](README\_image1.png)**
+!\[Model overviews](README\_image1.png)
 
 
 
@@ -39,7 +37,7 @@ Jupyter notebooks are provided to demonstrate using each model.
 
 
 
-### **Quick-start guide**
+## **Quick-start guide**
 
 **The model paths are available via the link below:**
 
@@ -47,7 +45,7 @@ Jupyter notebooks are provided to demonstrate using each model.
 
 
 
-##### Create new python environment
+### Create new python environment
 
 In powershell:
 
@@ -58,11 +56,11 @@ conda activate afmlevelenv
 
 
 
-##### Create a new folder and download afmlevel files into this
+### Create a new folder and download afmlevel files into this
 
 
 
-###### Download python files containing the main functions and dependencies
+#### Download python files containing the main functions and dependencies
 
 * utils.py
 * unet.py
@@ -71,7 +69,7 @@ conda activate afmlevelenv
 
 
 
-###### Download model paths
+#### Download model paths
 
 **The model paths are available via the link below:**
 
@@ -82,13 +80,13 @@ conda activate afmlevelenv
 
 
 
-###### If using demo: Download demo notebooks 
+#### If using demo: Download demo notebooks 
 
 * notebooks folder
 
 
 
-###### If using demo: Download example data 
+#### If using demo: Download example data 
 
 * TestImage folder
 
@@ -96,9 +94,9 @@ conda activate afmlevelenv
 
 
 
-##### Run models 
+### Run models 
 
-###### If using demo: Open Jupyter Notebook
+#### If using demo: Open Jupyter Notebook
 
 In powershell (within afmlevelevn):
 
@@ -116,7 +114,7 @@ Navigate to notebook and follow the instructions within. Options:
 * movie-demo.ipynb
 
 
-**All functions take a NumPy array as the input (2D - single image; 3D - movie stack) and output the result as a NumPy array. AFM files can be converted to np arrays via existing software such as afmreader. The demo notebooks also give an example of converting from AFM files or tiffs to np arrays.** 
+All functions take a NumPy array as the input (2D - single image; 3D - movie stack) and output the result as a NumPy array. AFM files can be converted to np arrays via existing software such as afmreader. The demo notebooks also give an example of converting from AFM files or tiffs to np arrays.** 
 
 
 
