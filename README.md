@@ -1,12 +1,124 @@
-# afMLevel
+# afMLevel:
 
 ## AFM Machine Learning Levelling
 
-A python package for running ML models for automatic levelling of AFM images.
 
-Models will be uploaded and linked soon...
 
-Current models available are:
+### **Overview**
 
-* **Background**
-* **Mask**
+A python package for running two separate models for automatic levelling of AFM images. The functions provided are:
+
+* **ml\_background(): MLBackground U-Net model**
+* **ml\_mask(): MLMask U-Net model** 
+* **level\_ml\_mask(): function for levelling with MLMask**
+
+
+
+**MLBackground detects the noise background and subtracts this from the raw image to give the levelled image (input: raw AFM image, output: levelled image or background).** 
+
+
+
+**MLMask detects the image features and produces a binary segmentation map of the features (input: raw image, output: binary mask).** 
+
+
+
+**Level MLMask uses MLMask within auto-levelling routines as an alternative to generating the mask by thresholding** **(e.g. by Otsu’s method, using n\*standard deviation or using a fixed value). The routines available for use with MLMask are:**
+
+* MLMask 
+* **iterative MLMask** 
+* **multi-plane MLMask**
+* multi-plane MLMask + line
+
+
+
+**!\[Model overviews](README\_image1.png)**
+
+
+
+Jupyter notebooks are provided to demonstrate using each model.
+
+
+
+### **Quick-start guide**
+
+**The model paths are available via the link below:**
+
+**https://leeds365-my.sharepoint.com/:f:/g/personal/pymte\_leeds\_ac\_uk/IgCh5DkBDFHvT5biEQX697Z1AUvnJBeAwPvkf\_tlK\_w2xtY?e=UoKwrc**
+
+
+
+##### Create new python environment
+
+In powershell:
+
+```python
+conda create -n afmlevelenv python=3.11
+
+conda activate afmlevelenv
+
+
+
+##### Create a new folder and download afmlevel files into this
+
+
+
+###### Download python files containing the main functions and dependencies
+
+* utils.py
+* unet.py
+* mask\_model.py
+* background\_model.py
+
+
+
+###### Download model paths
+
+**The model paths are available via the link below:**
+
+**https://leeds365-my.sharepoint.com/:f:/g/personal/pymte\_leeds\_ac\_uk/IgCh5DkBDFHvT5biEQX697Z1AUvnJBeAwPvkf\_tlK\_w2xtY?e=UoKwrc**
+
+* MaskModel.pth
+* BGModel.pth
+
+
+
+###### If using demo: Download demo notebooks 
+
+* notebooks folder
+
+
+
+###### If using demo: Download example data 
+
+* TestImage folder
+
+(note: own data can be used within the notebooks if it is saved in the same format as the example data (tiff))
+
+
+
+##### Run models 
+
+###### If using demo: Open Jupyter Notebook
+
+In powershell (within afmlevelevn):
+
+```python
+
+cd \\path\\to\\afmlevelfolder
+
+jupyter notebook
+
+
+
+Navigate to notebook and follow the instructions within. Options: 
+
+* single-image-demo.ipynb
+* movie-demo.ipynb
+
+
+**All functions take a NumPy array as the input (2D - single image; 3D - movie stack) and output the result as a NumPy array. AFM files can be converted to np arrays via existing software such as afmreader. The demo notebooks also give an example of converting from AFM files or tiffs to np arrays.** 
+
+
+
+
+
