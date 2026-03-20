@@ -34,8 +34,9 @@ build/
 # pytest cache
 .pytest_cache
 
-# Ignore test TIFF images- removed with filter
-test_image_tiffs/
+# Demo data and outputs
+data/
+output/
 
 # Coverage reports
 .coverage
