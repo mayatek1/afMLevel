@@ -9,7 +9,7 @@ either the predicted background or the levelled image. The implementation includ
 efficient tiling for large images, caching of the loaded model for performance, and
 handling of normalisation and denormalisation to ensure accurate predictions.
 
-The `level_ml_bg` function is the main entry point which takes an AFM image or stack,
+The `level_ml_bg()` function is the main entry point which takes an AFM image or stack,
 applies the model, and returns the processed result.
 
 Authors
@@ -249,8 +249,8 @@ def _process_single_image(
 
 def level_ml_bg(
     imarray: np.ndarray,
-    line_order: int,
     model_path: str,
+    line_order: int = 3,
     background: bool = False,
     zero_median: bool = True,
     device: Optional[str] = None,
@@ -262,10 +262,10 @@ def level_ml_bg(
     ----------
     imarray : np.ndarray
         Input raw AFM image (H, W) or stack (N, H, W).
-    line_order : int
-        Polynomial order for the final line fit.
     model_path : str
         Path to the trained model (.pth).
+    line_order : int, optional
+        Polynomial order for the final line fit. Default value = 3.
     background : bool, optional
         If True, return predicted background after the final line fit; else return
         levelled image.
