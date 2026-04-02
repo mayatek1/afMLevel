@@ -15,10 +15,10 @@ readme = "README.md"
 license = { text = "BSD-3-Clause" }
 requires-python = ">=3.11"
 dependencies = [
-  "torch",
+  "torch>=2.0",
   "pytorch-msssim",
   "scipy",
-  "opencv-python",
+  "opencv-python-headless",
   "numpy",
   "pillow",
   "scikit-learn",
@@ -26,6 +26,7 @@ dependencies = [
   "pandas",
   "matplotlib",
   "pnanolocz",
+  "huggingface_hub",
 ]
 keywords = [
   # Core domain
@@ -77,6 +78,7 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Topic :: Scientific/Engineering :: Image Processing",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 
 [project.optional-dependencies]
@@ -93,6 +95,7 @@ dev = [
 
 [project.urls]
 Homepage = "https://github.com/mayatek1/afMLevel"
+Issues = "https://github.com/mayatek1/afMLevel/issues"
 
 [project.entry-points."playnano.video_processing"]
 level_ml_bg = "afmlevel.background_model:level_ml_bg"

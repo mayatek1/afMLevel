@@ -25,7 +25,6 @@ code paths, algorithms, and final behaviour were reviewed and validated by the a
 """
 
 import math
-from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import torch
@@ -47,20 +46,52 @@ UNET_CONFIG = {
 # ~~~~~~~~~~~~~~~~ TILE SPLITTING & STICHING ~~~~~~~~~~~~~~~~~~~~~~
 
 
-def _split_into_tiles(imnorm: np.ndarray) -> Tuple[List[np.ndarray], Dict[str, int]]:
+def _split_into_tiles(imnorm: np.ndarray) -> tuple[list[np.ndarray], dict[str, int]]:
     """
-    Split a normalised image into tiles for model prediction.
+    Split a normalized AFM image into 256x256 tiles suitable for U-Net inference.
+
+    This function supports three tiling modes depending on the input size:
+
+    1. Exact 256x256 images
+       - Returned as a single tile.
+       - No padding or stitching needed.
+       mode = 256
+
+    2. Exact 512x512 images
+       - Split into four *interleaved* 256x256 tiles using a checkerboard
+         subsampling pattern:
+             TL = im[0::2, 0::2]
+             TR = im[0::2, 1::2]
+             BL = im[1::2, 0::2]
+             BR = im[1::2, 1::2]
+       - Ensures every pixel appears in exactly one tile.
+       - Avoids seams and preserves global continuity.
+       mode = 512
+
+    3. General case (arbitrary HxW)
+       - Image is mirrored left-right and top-bottom to create a seamless padded
+         canvas.
+       - Padded dimensions are rounded up to the next multiples of 256.
+       - Tiles are extracted from the mirrored canvas as a regular grid of
+         non-overlapping 256x256 patches.
+       - This avoids hard padding boundaries and reduces edge artifacts.
+       mode = 0
 
     Parameters
     ----------
     imnorm : np.ndarray
-        Normalised 2D image to be split into tiles.
+        Normalized AFM heightmap, shape (H, W), float32 in [0, 1].
 
     Returns
     -------
-    Tuple[List[np.ndarray], Dict[str, int]]
-      - arrays: list of (256, 256) tiles
-      - meta: dict with keys needed for stitching
+    tiles : list of np.ndarray
+        List of 256x256 tiles to be fed into the U-Net.
+    meta : dict[str, int]
+        Metadata required to stitch tile predictions back into the full image:
+        - "mode": tiling mode (256, 512, or 0 for general)
+        - "h", "w": original image size
+        - "hr", "wr": padded dimensions (general mode only)
+        - "hj", "wj": number of tiles vertically/horizontally (general mode only)
     """
     h, w = imnorm.shape
 
@@ -106,24 +137,21 @@ def _split_into_tiles(imnorm: np.ndarray) -> Tuple[List[np.ndarray], Dict[str, i
     return arrays, meta
 
 
-def _stitch_from_tiles(tiles: List[np.ndarray], meta: Dict[str, int]) -> np.ndarray:
+def _stitch_from_tiles(tiles: list[np.ndarray], meta: dict[str, int]) -> np.ndarray:
     """
-    Reverse the tiling: tile list -> stitched full-resolution background prediction.
-
-    Combines the predicted tiles back into a single image based on the metadata from
-    the splitting step.
+    Stitch tile predictions back into a full-resolution background image.
 
     Parameters
     ----------
-    tiles : List[np.ndarray]
-        List of predicted tiles from the model.
-    meta : Dict[str, int]
-        Metadata from the splitting step needed to correctly stitch the tiles.
+    tiles : list[np.ndarray]
+        List of predicted (256x256) background tiles.
+    meta : dict[str, int]
+        Metadata returned by `_split_into_tiles`.
 
     Returns
     -------
     np.ndarray
-        Stitched background prediction at the original image resolution.
+        Stitched background prediction, shape (H, W).
     """
     mode = meta["mode"]
     h, w = meta["h"], meta["w"]
@@ -155,24 +183,26 @@ def _stitch_from_tiles(tiles: List[np.ndarray], meta: Dict[str, int]) -> np.ndar
 
 
 def _predict_tiles(
-    model: torch.nn.Module, arrays: List[np.ndarray], device: torch.device
-) -> List[np.ndarray]:
+    model: torch.nn.Module,
+    arrays: list[np.ndarray],
+    device: torch.device,
+) -> list[np.ndarray]:
     """
-    Run model on a list of 2D tiles and return list of 2D outputs (numpy).
+    Run the background model on a list of tiles.
 
     Parameters
     ----------
     model : torch.nn.Module
-        Loaded U-Net model for background prediction.
-    arrays : List[np.ndarray]
-        List of normalised 2D tiles to be predicted.
+        Loaded U-Net model on the correct device.
+    arrays : list[np.ndarray]
+        List of normalized tiles, each (256x256).
     device : torch.device
-        Device to run the model on (cuda or cpu).
+        Device used for inference.
 
     Returns
     -------
-    List[np.ndarray]
-        List of predicted 2D tiles as numpy arrays.
+    list[np.ndarray]
+        Model predictions for each tile, each (256x256), dtype float32.
     """
     preds = []
     model.eval()
@@ -196,27 +226,35 @@ def _process_single_image(
     line_order: int,
     polyx: int = 1,
     polyy: int = 1,
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     """
-    Process a single 2D image.
+    Predict the background of a single AFM image and return both background
+    and levelled outputs.
+
+    Steps:
+    - plane fitting (xy polynomial)
+    - tile split → model prediction → stitching
+    - denormalisation
+    - final line-based correction
+    - levelled image = plane-fit image - corrected background
 
     Parameters
     ----------
     model : torch.nn.Module
-        Loaded U-Net model for background prediction.
+        Background U-Net model.
     image : np.ndarray
-        Single 2D AFM image to be processed.
+        Input AFM image, shape (H, W).
     line_order : int
         Polynomial order for the final line fit.
-    polyx : int, optional
-        Polynomial order for the initial plane fit in x-direction (default is 1).
-    polyy : int, optional
-        Polynomial order for the initial plane fit in y-direction (default is 1).
+    polyx, polyy : int
+        Polynomial orders for the initial plane fit.
 
     Returns
     -------
-    Tuple[np.ndarray, np.ndarray]
-      predictedBG_linefit (2D), predictedLev (2D)
+    background_linefit : np.ndarray
+        Background estimate after line-fit correction.
+    levelled : np.ndarray
+        Levelled AFM image (image - background).
     """
     # Plane fit and normalise (same as before)
     im_planefit = xyplanefit(image, polyx, polyy)
@@ -249,37 +287,49 @@ def _process_single_image(
 
 def level_ml_bg(
     imarray: np.ndarray,
-    model_path: str,
+    model_path: str = "Heath-AFM-Lab/afMLevel-background-unet::background_unet.pth",
     line_order: int = 3,
     background: bool = False,
     zero_median: bool = True,
-    device: Optional[str] = None,
+    device: str | None = None,
 ) -> np.ndarray:
     """
-    Apply the trained U-Net model to predict background & level an AFM image or stack.
+    Predict and subtract background using the ML U-Net background model.
+
+    This function handles both single AFM frames and multi-frame stacks. Background
+    is predicted via tiling, stitching, denormalisation, and an optional final
+    line-fit correction. For stacks, each slice is processed independently.
 
     Parameters
     ----------
     imarray : np.ndarray
-        Input raw AFM image (H, W) or stack (N, H, W).
+        Input AFM image or stack:
+        - 2D array: (H, W)
+        - 3D array: (N, H, W)
     model_path : str
-        Path to the trained model (.pth).
-    line_order : int, optional
-        Polynomial order for the final line fit. Default value = 3.
-    background : bool, optional
-        If True, return predicted background after the final line fit; else return
-        levelled image.
-    zero_median : bool, optional
-        If True and input is a stack, subtract the per-slice median from each levelled
-        slice.
-    device : str or None, optional
-        'cuda' or 'cpu'. If None, auto-selects CUDA if available.
+        Path or HuggingFace identifier for the background model.
+        Supports:
+        - Local file: "path/model.pth"
+        - Repo: "Heath-AFM-Lab/afMLevel-background-unet"
+        - Repo::file: "Heath-AFM-Lab/afMLevel-background-unet::background_unet.pth"
+        Default downloads the HF model if not cached.
+    line_order : int
+        Polynomial order used for final line-based correction.
+    background : bool
+        If True, return the predicted background.
+        If False, return the levelled image (image - background).
+    zero_median : bool
+        If True and `imarray` is a stack, subtract the per-slice median of each
+        levelled frame.
+    device : str or None
+        "cuda", "cpu", or None (auto-select).
 
     Returns
     -------
     np.ndarray
-        If input is 2D: returns (H, W)
-        If input is 3D: returns (N, H, W)
+        If input was 2D: (H, W)
+        If input was 3D: (N, H, W)
+        dtype float64.
     """
     if imarray.ndim not in (2, 3):
         logger.error("Invalid imarray rank: shape=%s", getattr(imarray, "shape", None))
