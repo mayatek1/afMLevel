@@ -37,6 +37,8 @@ build/
 # Demo data and outputs
 data/
 output/
+*.zip
+*.gif
 
 # Coverage reports
 .coverage
