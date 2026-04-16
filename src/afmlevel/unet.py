@@ -13,15 +13,15 @@ code paths, algorithms, and final behaviour were reviewed and validated by the a
 """
 
 import os
-from typing import Dict, Tuple
 
 import torch
 import torch.nn as nn
 import logging
+from huggingface_hub import hf_hub_download
 
 logger = logging.getLogger(__name__)
 # Global model cache
-_MODEL_CACHE: Dict[Tuple[str, str], torch.nn.Module] = {}
+_MODEL_CACHE: dict[tuple[str, str], torch.nn.Module] = {}
 
 
 def load_unet_model(
@@ -29,36 +29,59 @@ def load_unet_model(
     n_channels: int,
     config: dict,
     device: torch.device,
-) -> torch.nn.Module:
+) -> nn.Module:
     """
-    Unified model loader and cache for both mask and background U-Net models.
+    Load a U-Net model from either a local .pth file or a Hugging Face Hub repository.
 
     Parameters
     ----------
     model_path : str
-        Path to the .pth (state_dict)
+        Path or identifier for the model. Supported formats:
+        - Local file path: "path/to/model.pth"
+        - HuggingFace repo: "user/repo" (loads "model.pth")
+        - HuggingFace repo with explicit file: "user/repo::file.pth"
     n_channels : int
         Number of input channels (usually 1)
     config : dict
-        U-Net configuration (filter sizes etc)
+        Dictionary of U-Net configuration parameters.
     device : torch.device
-        'cuda' or 'cpu'
+        Device on which to load the model. Currently: 'cuda' or 'cpu'
 
     Returns
     -------
-    torch.nn.Module
+    nn.Module
         Model loaded on the requested device.
+
+    Notes
+    -----
+    - Models from HuggingFace are cached locally and reused automatically.
+    - The function maintains an internal cache keyed by (resolved_path, device)
+      to avoid reloading models repeatedly within a session.
     """
-    key = (os.path.abspath(model_path), str(device))
+    # Check HF format:  "repo::filename"
+    if "::" in model_path:
+        repo_id, filename = model_path.split("::", 1)
+        hf_file = hf_hub_download(repo_id=repo_id, filename=filename)
+        real_path = hf_file
+
+    # If model_path has no extension, treat as HF repo with default filename
+    elif not os.path.exists(model_path):
+        # assume repo_id and default filename "model.pth"
+        repo_id = model_path
+        hf_file = hf_hub_download(repo_id=repo_id, filename="model.pth")
+        real_path = hf_file
+
+    else:
+        # local file
+        real_path = model_path
+
+    key = (os.path.abspath(real_path), str(device))
 
     if key in _MODEL_CACHE:
         logger.debug("Reusing cached UNet for key=%s", key)
         return _MODEL_CACHE[key]
 
-    if not os.path.exists(model_path):
-        logger.error("Model file not found: %s", model_path)
-        raise FileNotFoundError(f"Model file not found: {model_path}")
-
+    logger.info(f"Loading UNet weights from: {real_path}")
     logger.info(
         "Loading UNet (n_channels=%s, device=%s, config=%s)",
         n_channels,
@@ -67,14 +90,16 @@ def load_unet_model(
     )
     model = UNet(n_channels, **config).to(device)
 
-    # Safe loading: requires your .pth to be a pure state_dict
-    state = torch.load(model_path, map_location=device, weights_only=True)
+    # Always load from the TRUE resolved file path (real_path)
+    try:
+        state = torch.load(real_path, map_location=device, weights_only=True)
+    except TypeError:
+        state = torch.load(real_path, map_location=device)
     model.load_state_dict(state)
     model.eval()
-    logger.debug("UNet loaded & set to eval() from %s", model_path)
 
     _MODEL_CACHE[key] = model
-    logger.info("Model loaded & cached: %s", model_path)
+    logger.info(f"Model loaded & cached from: {real_path}")
     return model
 
 

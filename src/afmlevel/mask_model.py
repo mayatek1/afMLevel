@@ -1,4 +1,4 @@
-from typing import Any, List, Optional
+from typing import List
 
 import cv2
 import numpy as np
@@ -17,6 +17,7 @@ from afmlevel.utils import normalise, remove_small_zeros, swap01, xyplanefit
 import logging
 
 logger = logging.getLogger(__name__)
+
 # ~~~~~~~~~~~~~~~~~~~~~ MODEL SETTINGS ~~~~~~~~~~~~~~~~~~~~~
 
 UNET_CONFIG = {
@@ -36,9 +37,23 @@ def _predict_mask_256(
     threshold: float = 0.5,
 ) -> np.ndarray:
     """
-    Predict a binary mask from a single normalized 256x256 image (float32 in [0,1]).
+    Predict a (256x256) binary mask from a normalized AFM patch.
 
-    Returns (256, 256) np.uint8 array with {0,1}.
+    Parameters
+    ----------
+    model : torch.nn.Module
+        Loaded U-Net model already placed on the correct device.
+    image_256_norm : np.ndarray
+        Normalized 2D AFM image, shape (256, 256), dtype float32 in [0, 1].
+    device : torch.device
+        Device where inference is executed.
+    threshold : float, optional
+        Sigmoid cutoff threshold to produce a binary mask.
+
+    Returns
+    -------
+    np.ndarray
+        Binary mask of shape (256, 256), dtype uint8 with values {0, 1}.
     """
     if image_256_norm.shape != (256, 256):
         logger.error(
@@ -73,13 +88,34 @@ def _process_single_image_mask(
     threshold: float = 0.5,
 ) -> np.ndarray:
     """
-    Process one 2D image.
+    Process a single AFM image using the U-Net mask model.
 
-    plane-fit -> resize(256x256) -> normalise -> predict
-    -> resize back -> swap01 -> remove_small_zeros
+    Steps:
+    - plane fit (xypolynomial)
+    - resize to 256x256
+    - normalize
+    - predict mask using U-Net
+    - resize back to original resolution
+    - optional small-object removal
+    - enforce uint8 {0,1}
 
-    Returns a binary mask with the same HxW shape as the input (dtype uint8,
-    values {0,1}).
+    Parameters
+    ----------
+    image : np.ndarray
+        Input AFM heightmap, shape (H, W).
+    model : torch.nn.Module
+        Loaded U-Net mask model.
+    polyx, polyy : int
+        Polynomial orders for plane fitting.
+    out_min_size : int
+        Minimum connected size of zeros to keep.
+    threshold : float
+        Probability threshold for binarization.
+
+    Returns
+    -------
+    np.ndarray
+        Binary mask (H, W) with values {0,1}, dtype uint8.
     """
     H, W = image.shape
     # plane fit
@@ -113,38 +149,41 @@ def _process_single_image_mask(
 
 def ml_mask(
     imarray: np.ndarray,
-    model_path: str,
-    device: Optional[str] = None,
+    model_path: str = "Heath-AFM-Lab/afMLevel-mask-unet::mask_unet.pth",
+    device: str | None = None,
     threshold: float = 0.5,
     polyx: int = 1,
     polyy: int = 1,
     min_size: int = 30,
 ) -> np.ndarray:
     """
-    Apply the trained U-Net mask model to a single AFM image (H,W) or a stack (N,H,W).
-
-    For a 2D input, returns a (H,W) binary mask.
-    For a 3D input, returns a (N,H,W) stack of binary masks.
+    Compute a background mask (1 = background, 0 = feature) using the ML U-Net model.
 
     Parameters
     ----------
     imarray : np.ndarray
-        2D image (H,W) or 3D stack (N,H,W).
+        Input AFM image or stack:
+        - 2D array: (H, W)
+        - 3D array: (N, H, W)
     model_path : str
-        Path to .pth (state_dict) file.
-    device : Optional[str]
-        'cuda' or 'cpu'; if None, auto-select CUDA if available.
+        Path or HuggingFace model specifier. Supports:
+        - local file: "/path/model.pth"
+        - HuggingFace repo: "user/repo"
+        - repo + file: "user/repo::filename.pth"
+    device : str or None
+        "cpu" or "cuda". If None, chooses automatically.
     threshold : float
-        Sigmoid probability threshold for binarisation.
+        Sigmoid threshold used during mask prediction.
     polyx, polyy : int
         Plane-fit polynomial orders.
     min_size : int
-        Minimum 'hole' size to fill in remove_small_zeros (post-processing).
+        Minimum zero-region size to preserve.
 
     Returns
     -------
     np.ndarray
-        Same leading shape as input. Binary masks with values {0,1}, dtype uint8.
+        If input is 2D: returns (H, W) mask.
+        If input is 3D: returns (N, H, W) mask stack.
     """
     if imarray.ndim not in (2, 3):
         logger.error(
@@ -237,8 +276,8 @@ def _perimeter_remove(bw2d: np.ndarray) -> np.ndarray:
 
 def ml_edges(
     imarray: np.ndarray,
-    model_path: str,
-    device: Optional[str] = None,
+    model_path: str = "Heath-AFM-Lab/afMLevel-mask-unet::mask_unet.pth",
+    device: str | None = None,
     threshold: float = 0.5,
     polyx: int = 1,
     polyy: int = 1,
@@ -248,39 +287,36 @@ def ml_edges(
     dilate_disk_radius: int = 3,
 ) -> np.ndarray:
     """
-    Create edge mask using a trained U-Net model, followed by morphological operations.
+    Generate an edge mask from the ML U-Net mask, applying morphology steps
+    analogous to MATLAB's `bwmorph` and `bwareaopen`.
 
     Parameters
     ----------
     imarray : np.ndarray
-        (H, W) single image, or (N, H, W) stack (preferred). If (H, W, N) is passed,
-        call-side should transpose to NHW before passing here for best clarity.
-    model_path, device, threshold, polyx, polyy, min_size
-        Passed to `ml_mask`, which is expected to return a binary mask in NHW.
-    device : Optional[str]
-        'cuda' or 'cpu'; if None, auto-select CUDA if available. Passed to `ml_mask`.
+        Input AFM image (H,W) or stack (N,H,W).
+    model_path : str
+        HuggingFace or local U-Net model path.
+    device : str or None
+        Execution device passed to `ml_mask`.
     threshold : float
-        Sigmoid probability threshold for binarisation. Passed to `ml_mask`.
+        Sigmoid threshold for mask inference.
     polyx, polyy : int
-        Plane-fit polynomial orders. Passed to `ml_mask`.
+        Polynomial orders for plane fitting (inside ml_mask).
     min_size : int
-        Minimum 'hole' size to fill in remove_small_zeros (post-processing).
-        Passed to `ml_mask`.
+        Minimum object size for postprocessing.
     area_thresh_objects : int
-        Minimum object size to keep (≈ bwareaopen(..., 100)).
+        Minimum object size to keep during morphological cleanup.
     area_thresh_holes : int
-        Maximum hole area to fill (≈ ~bwareaopen(~..., 50)).
+        Maximum hole size to fill.
     dilate_disk_radius : int
-        Radius for disk structuring element in dilation (≈ strel('disk',3)).
+        Disk radius for dilation.
 
     Returns
     -------
     np.ndarray
-        Binary boolean mask. Shape matches input rank:
-        - input (H, W)  -> output (H, W)
-        - input (N, H, W) -> output (N, H, W)
-        Returned mask has value 1 for interior/background, and 0 for the detected
-        perimeter region.
+        Binary uint8 mask (same shape as input), where:
+        - 1 = background/interior
+        - 0 = detected edges.
     """
     # 1)  Normalize to NHW
     imarray = np.array(imarray, np.float32, copy=False)
@@ -593,13 +629,13 @@ DEFAULT_ML_ROUTINES = {
 
 def level_ml_mask(
     imarray: np.ndarray,
-    model_path: str,
-    device: Optional[str] = None,
+    model_path: str = "Heath-AFM-Lab/afMLevel-mask-unet::mask_unet.pth",
+    device: str | None = None,
     threshold: float = 0.5,
     min_size: int = 30,
     method: str = "iterative ML mask",
     ml_routines: dict | None = None,
-) -> np.ndarray[Any, np.dtype[np.float64]]:
+) -> np.ndarray:
     """
     AFM leveling using a learned mask and routines of plane/median fits.
 
@@ -644,7 +680,10 @@ def level_ml_mask(
         - 3D: shape (N, H, W), processed frame-by-frame
         Internally cast to float64 for leveling, and to float32 for model inference.
     model_path : str
-        Path to the trained model used by `ml_mask`.
+        Path or HuggingFace identifier for the U-Net mask model.
+        Default is:
+        "Heath-AFM-Lab/afMLevel-mask-unet::mask_unet.pth"
+        which downloads the model from HuggingFace if not cached.
     device : Optional[str]
         'cuda' or 'cpu'. If None, auto-selects CUDA if available.
     threshold : float
