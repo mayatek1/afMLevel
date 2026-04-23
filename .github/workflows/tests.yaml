@@ -33,22 +33,20 @@ jobs:
         run: python -m pip install --upgrade pip
 
       - name: Install PyTorch (CPU)
-        run: |
-          pip install torch --index-url https://download.pytorch.org/whl/cpu
+        run: pip install torch --index-url https://download.pytorch.org/whl/cpu
 
       - name: Install project with dev dependencies
-        run: |
-          pip install -e ".[dev]"
+        run: pip install -e ".[dev]"
 
       - name: Run tests with coverage
-        run: |
-          pytest \
-            --maxfail=1 \
-            --disable-warnings \
-            -q \
-            --cov=afmlevel \
-            --cov-report=xml \
-            --cov-report=term
+        run: >
+          pytest
+          --maxfail=1
+          --disable-warnings
+          -q
+          --cov=afmlevel
+          --cov-report=xml
+          --cov-report=term
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
