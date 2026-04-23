@@ -121,7 +121,7 @@ def test_3d_input_returns_3d_uint8_mask_edge_array(mock_load_unet):
     "shape",
     [
         ((2, 3, 4, 5)),
-        ((1)),
+        (1),
     ],
 )
 def test_ml_mask_logs_error_with_invalid_shape(caplog, shape):

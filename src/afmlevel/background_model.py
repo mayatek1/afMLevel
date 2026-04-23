@@ -24,6 +24,7 @@ assistance and for providing debugging, refactoring and documentation suggestion
 code paths, algorithms, and final behaviour were reviewed and validated by the authors.
 """
 
+import logging
 import math
 
 import numpy as np
@@ -31,7 +32,6 @@ import torch
 
 from afmlevel.unet import load_unet_model
 from afmlevel.utils import denormalise, linefit, normalise, xyplanefit
-import logging
 
 logger = logging.getLogger(__name__)
 # ~~~~~~~~~~~~~~~~~~~~~ MODEL SETTINGS ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -228,8 +228,7 @@ def _process_single_image(
     polyy: int = 1,
 ) -> tuple[np.ndarray, np.ndarray]:
     """
-    Predict the background of a single AFM image and return both background
-    and levelled outputs.
+    Predict the background of an AFM image, return the background & levelled outputs.
 
     Steps:
     - plane fitting (xy polynomial)

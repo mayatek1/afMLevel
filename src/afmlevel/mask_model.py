@@ -1,3 +1,4 @@
+import logging
 from typing import List
 
 import cv2
@@ -14,7 +15,6 @@ from skimage.morphology import (
 
 from afmlevel.unet import load_unet_model
 from afmlevel.utils import normalise, remove_small_zeros, swap01, xyplanefit
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -287,8 +287,9 @@ def ml_edges(
     dilate_disk_radius: int = 3,
 ) -> np.ndarray:
     """
-    Generate an edge mask from the ML U-Net mask, applying morphology steps
-    analogous to MATLAB's `bwmorph` and `bwareaopen`.
+    Generate an edge mask from the ML U-Net mask.
+
+    Applies morphology steps analogous to MATLAB's `bwmorph` and `bwareaopen`.
 
     Parameters
     ----------

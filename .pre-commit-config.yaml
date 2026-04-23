@@ -1,5 +1,4 @@
 repos:
-  # --- Core Pre-Commit Hooks ---
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.5.0
     hooks:
@@ -11,42 +10,23 @@ repos:
         exclude: (^docs/|^notebooks/|^LICENSE$)
       - id: check-added-large-files
         args: ["--maxkb=500"]
-        exclude: (^docs/|^tests/resources/|^notebooks/|^LICENSE$)
       - id: check-merge-conflict
       - id: check-toml
 
-  # --- isort (sorting imports) ---
-  - repo: https://github.com/pycqa/isort
-    rev: 5.12.0
-    hooks:
-      - id: isort
-        args: ["--profile", "black"]
-        language_version: python3
-        exclude: (^docs/|^notebooks/|^LICENSE$)
-
-  # --- Ruff Lint & Format ---
+  # --- Ruff: linting + import sorting ---
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.3.7
     hooks:
       - id: ruff
         args: ["--fix"]
-        exclude: (^docs/|^notebooks/|^LICENSE$)
+      - id: ruff-format
 
-  # --- Black Code Formatter ---
-  - repo: https://github.com/psf/black
-    rev: 23.7.0
-    hooks:
-      - id: black
-        language_version: python3
-        exclude: (^docs/|^notebooks/|^LICENSE$)
-
-  # --- Markdown Linting ---
+  # --- Markdown ---
   - repo: https://github.com/DavidAnson/markdownlint-cli2
     rev: v0.18.1
     hooks:
       - id: markdownlint-cli2
-        args: ['--fix','--config','.markdownlint.yaml']
-        exclude: (^docs/|^notebooks/|^LICENSE$|CITATION.cff)
+        args: ["--fix","--config",".markdownlint.yaml"]
 
   # --- Codespell ---
   - repo: https://github.com/codespell-project/codespell
@@ -54,4 +34,3 @@ repos:
     hooks:
       - id: codespell
         types: [text]
-        exclude: (^docs/_build/|^tests/resources/|^build/|^dist/|^notebooks/|^LICENSE$|CITATION.cff)
