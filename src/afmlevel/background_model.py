@@ -1,16 +1,42 @@
 """
 Background prediction and leveling using a trained U-Net model.
 
-This module implements the `level_ml_bg()` function, which applies a trained U-Net model
-to predict the background (tilt, scan line variation and scanning artifacts) of AFM
-images and level them by subtracting this background from the original data. The
-function can handle both single 2D images and 3D stacks, with options for returning
-either the predicted background or the levelled image. The implementation includes
-efficient tiling for large images, caching of the loaded model for performance, and
-handling of normalisation and denormalisation to ensure accurate predictions.
+This module implements machine-learning-based background prediction and automated
+levelling routines for atomic force microscopy (AFM) images. A trained U-Net
+convolutional neural network is used to predict the large-scale, smoothly varying
+background components of AFM data, including sample tilt, scan-line variation, and
+instrument-related scanning artefacts. The predicted background is then subtracted
+from the original data to produce a levelled image.
 
-The `level_ml_bg()` function is the main entry point which takes an AFM image or stack,
-applies the model, and returns the processed result.
+The core public function is:
+
+* `level_ml_bg()` - Main entry point for users. Applies the trained U-Net model to an
+  AFM image or image stack to predict the underlying background signal and returns
+  either the predicted background or the levelled result (original image minus
+  predicted background). The function supports both single 2D images and 3D stacks.
+
+The implementation includes efficient tiling strategies for large images, caching of
+the loaded model to avoid repeated initialisation, and careful handling of
+normalisation and denormalisation to ensure numerical stability and accurate
+background prediction across varying height scales.
+
+The `level_ml_bg()` function orchestrates the full pipeline: preprocessing and
+normalisation of the input data, model inference to predict the background, optional
+reconstruction from tiled predictions, and subtraction of the background to generate
+a levelled AFM image or stack.
+
+Model loading and distribution
+------------------------------
+The trained U-Net model weights can be supplied either as a local file path or via
+a Hugging Face repository identifier. By default, the model is loaded using a
+Hugging Face reference of the form:
+
+    "Heath-AFM-Lab/afMLevel-bg-unet::bg_unet.pth"
+
+When a Hugging Face identifier is used, the model weights are downloaded on demand
+(if not already cached locally) using the Hugging Face Hub and reused across calls.
+This allows reproducible access to a fixed, versioned background prediction model
+without bundling large binary weight files directly in the source repository.
 
 Authors
 -------
@@ -19,9 +45,10 @@ Daniel E. Rollins, University of Leeds (Python implementation and optimisation)
 
 AI Transparency Note
 --------------------
-AI-based tools were used in certain parts of this module for limited typing/formatting
-assistance and for providing debugging, refactoring and documentation suggestions. All
-code paths, algorithms, and final behaviour were reviewed and validated by the authors.
+AI-based tools were used in limited parts of this module for typing, formatting, and
+documentation assistance, as well as for debugging and refactoring suggestions. All
+code paths, algorithms, and final behaviour were reviewed and validated by the
+authors.
 """
 
 import logging
