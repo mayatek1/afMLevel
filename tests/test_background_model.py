@@ -58,3 +58,37 @@ class TestLevelMlBg:
         img = np.random.rand(300, 400).astype(np.float32)
         result = level_ml_bg(img)
         assert result.shape == (300, 400)
+
+    def test_zero_median_true_centres_2d_output(self, mock_load_unet):
+        """Test that zero_median=True produces a near-zero median for 2D output."""
+        img = np.random.rand(256, 256).astype(np.float32) + 10.0  # large offset
+        result = level_ml_bg(img, zero_median=True)
+        assert abs(np.median(result)) < abs(np.median(img))
+
+    def test_zero_median_false_does_not_centre_2d_output(self, mock_load_unet):
+        """Test that zero_median=False does not subtract the median from 2D output."""
+        img = np.random.rand(256, 256).astype(np.float32)
+        result_on = level_ml_bg(img, zero_median=True)
+        result_off = level_ml_bg(img, zero_median=False)
+        assert not np.allclose(result_on, result_off)
+
+    def test_zero_median_true_centres_3d_slices(self, mock_load_unet):
+        """Test zero_median=True centres each slice independently in a 3D stack."""
+        stack = np.random.rand(3, 256, 256).astype(np.float32) + 10.0
+        result = level_ml_bg(stack, zero_median=True)
+        for i in range(result.shape[0]):
+            assert abs(np.median(result[i])) < abs(np.median(stack[i]))
+
+    def test_zero_median_false_does_not_centre_3d_output(self, mock_load_unet):
+        """Test zero_median=False doesn't subtract a per-slice median in a 3D stack."""
+        stack = np.random.rand(3, 256, 256).astype(np.float32)
+        result_on = level_ml_bg(stack, zero_median=True)
+        result_off = level_ml_bg(stack, zero_median=False)
+        assert not np.allclose(result_on, result_off)
+
+    def test_zero_median_does_not_affect_background_output(self, mock_load_unet):
+        """zero_median flag should have no effect when background=True."""
+        img = np.random.rand(256, 256).astype(np.float32)
+        bg_on = level_ml_bg(img, background=True, zero_median=True)
+        bg_off = level_ml_bg(img, background=True, zero_median=False)
+        assert np.allclose(bg_on, bg_off)

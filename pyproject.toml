@@ -85,12 +85,17 @@ classifiers = [
 dev = [
     "pytest>=7.0",
     "pytest-cov",
+    "tifffile",
     "pre-commit",
     "isort",
     "ruff",
     "black",
     "codespell>=2.3.0",
     "setuptools_scm",
+]
+notebooks = [
+    "jupyter",
+    "tifffile",
 ]
 
 [project.urls]
@@ -165,8 +170,11 @@ check-filenames = false
 check-hidden = false
 
 [tool.pytest.ini_options]
-addopts = "--cov=afmlevel --cov-report=term-missing --cov-append"
+addopts = "--cov=afmlevel --cov-report=term-missing --cov-append -m 'not slow'"
 testpaths = ["tests"]
+markers = [
+    "slow: tests requiring real model weights downloaded from HuggingFace (deselect by default)",
+]
 
 [tool.coverage.run]
 branch = true

@@ -40,6 +40,17 @@ demand (if not already cached locally) using the Hugging Face Hub and reused
 across calls. This enables reproducible access to a fixed, versioned model
 without bundling large binary weights directly in the source repository.
 
+Implementation notes
+--------------------
+Although this module exposes the public functions `ml_mask()` and `ml_edges()`,
+the high-level levelling function `level_ml_mask()` does not call these functions
+directly during execution. Instead, it uses internal helper functions that accept
+a pre-loaded U-Net model to avoid repeated model initialisation and Hugging Face
+cache checks when processing image stacks.
+
+The public `ml_mask()` and `ml_edges()` functions remain the recommended entry
+points for standalone mask or edge-mask generation.
+
 Authors
 -------
 Maya Tekchandani, University of Leeds (Model training and Python implementation)
@@ -257,7 +268,7 @@ def ml_mask(
         else ("cuda" if torch.cuda.is_available() else "cpu")
     )
 
-    logger.info(
+    logger.debug(
         "ml_mask start: shape=%s device=%s threshold=%.2f min_size=%d",
         imarray.shape,
         torch_device,
@@ -294,6 +305,103 @@ def ml_mask(
         out_masks.append(mask_i)
 
     return np.stack(out_masks, axis=0)
+
+
+def _ml_edges_with_model(
+    model: torch.nn.Module,
+    imarray: np.ndarray,
+    threshold: float = 0.5,
+    polyx: int = 1,
+    polyy: int = 1,
+    min_size: int = 30,
+    area_thresh_objects: int = 100,
+    area_thresh_holes: int = 50,
+    dilate_disk_radius: int = 3,
+) -> np.ndarray:
+    """
+    Generate an edge mask using a pre-loaded U-Net model.
+
+    Internal variant of `ml_edges` that accepts an already-loaded model to
+    avoid repeated Hugging Face cache checks when processing stacks frame-by-frame
+    inside `level_ml_mask`.
+
+    Parameters
+    ----------
+    model : torch.nn.Module
+        Loaded U-Net mask model already placed on the correct device.
+    imarray : np.ndarray
+        Input AFM image (H, W) or stack (N, H, W), dtype float32.
+    threshold : float, optional
+        Sigmoid threshold for mask binarisation.
+    polyx, polyy : int, optional
+        Polynomial orders for plane fitting inside `_process_single_image_mask`.
+    min_size : int, optional
+        Minimum zero-region size to preserve in mask post-processing.
+    area_thresh_objects : int, optional
+        Minimum object size to retain during morphological cleanup.
+    area_thresh_holes : int, optional
+        Maximum hole size to fill during morphological cleanup.
+    dilate_disk_radius : int, optional
+        Radius of the disk structuring element used for dilation.
+
+    Returns
+    -------
+    np.ndarray
+        Binary uint8 mask of the same shape as input, where:
+        - 1 = background/interior
+        - 0 = detected edges
+    """
+    imarray = np.array(imarray, np.float32, copy=False)
+    input_was_2d = imarray.ndim == 2
+    if input_was_2d:
+        img_nhw = imarray[None, ...]
+    else:
+        img_nhw = imarray
+
+    # Generate mask using the pre-loaded model directly
+    N, H, W = img_nhw.shape
+    masks = []
+    for i in range(N):
+        mask_i = _process_single_image_mask(
+            model,
+            img_nhw[i],
+            polyx=polyx,
+            polyy=polyy,
+            out_min_size=min_size,
+            threshold=threshold,
+        )
+        masks.append(mask_i)
+    ml_mask_result = np.stack(masks, axis=0)
+
+    # Rest of ml_edges morphology — identical to existing code
+    ml_mask_invert = 1 - ml_mask_result
+    N, H, W = ml_mask_invert.shape
+    out = np.zeros((N, H, W), dtype=bool)
+    max_obj = max(0, area_thresh_objects - 1)
+    max_hole = max(0, area_thresh_holes - 1)
+
+    for i in range(N):
+        bool_mask = ml_mask_invert[i].astype(bool)
+        bool_mask = _perimeter_remove(bool_mask)
+        if max_obj > 0:
+            bool_mask = remove_small_objects(
+                bool_mask, max_size=max_obj, connectivity=2
+            )
+        if max_hole > 0:
+            bool_mask = remove_small_holes(bool_mask, max_size=max_hole, connectivity=2)
+        bool_mask = dilation(bool_mask, footprint=disk(dilate_disk_radius))
+        if max_obj > 0:
+            bool_mask = remove_small_objects(
+                bool_mask, max_size=max_obj, connectivity=2
+            )
+        if max_hole > 0:
+            bool_mask = remove_small_holes(bool_mask, max_size=max_hole, connectivity=2)
+        out[i] = bool_mask
+
+    result = (~out).astype(np.uint8)
+    if input_was_2d:
+        return result[0]
+    return result
 
 
 def _perimeter_remove(bw2d: np.ndarray) -> np.ndarray:
@@ -747,6 +855,16 @@ def level_ml_mask(
     min_size : int
         Minimum component size used by `ml_mask` in post-processing (e.g.,
         remove_small_zeros).
+    method : str, optional
+        Name of the levelling routine to apply. Must be a key of
+        ``DEFAULT_ML_ROUTINES`` (or the custom ``ml_routines`` dict if supplied).
+        Available options are ``"iterative ML mask"``, ``"ML mask"``,
+        ``"multi-plane-ML-it"``, ``"multi-plane-ML"``, and
+        ``"multi-plane-ML-it-line"``. Default is ``"iterative ML mask"``.
+    ml_routines : dict or None, optional
+        Custom routines dictionary to use in place of ``DEFAULT_ML_ROUTINES``.
+        Each value should be a list of step dicts in the same format as
+        ``DEFAULT_ML_ROUTINES``. If None, the default routines are used.
 
     Returns
     -------
@@ -755,6 +873,17 @@ def level_ml_mask(
         - shape (H, W) if input was 2D
         - shape (N, H, W) if input was 3D
         dtype float64 (matching typical leveling pipeline expectations)
+
+    Internals
+    ---------
+    For efficiency, `level_ml_mask()` does not invoke the public `ml_mask()` or
+    `ml_edges()` functions internally. Instead, it performs equivalent operations
+    using internal helper functions with a shared, pre-loaded model instance. This
+    avoids repeated model loading and significantly improves performance for large
+    image stacks.
+
+    This is an implementation detail and does not affect the numerical meaning of
+    the generated masks.
 
     Notes
     -----
@@ -821,6 +950,10 @@ def level_ml_mask(
     steps = routines[method]
     N = result.shape[0]
 
+    # Load model once for the entire stack
+    n_channels = 1
+    model = load_unet_model(model_path, n_channels, UNET_CONFIG, torch_device)
+
     for i in range(N):
         img = result[i]
         fg_mask_bool = None  # foreground mask, boolean
@@ -837,12 +970,11 @@ def level_ml_mask(
                 #  we pass float32 for speed
                 img_for_model = np.asarray(img, dtype=np.float32, order="C")
                 # Expect ml_mask to return (H,W) uint8 {0,1} or bool mask
-                bg_mask = ml_mask(
+                bg_mask = _process_single_image_mask(
+                    model,
                     img_for_model,
-                    model_path=model_path,
-                    device=str(torch_device),
                     threshold=threshold,
-                    min_size=min_size,
+                    out_min_size=min_size,
                 )
                 bg_mask = np.asarray(bg_mask)
 
@@ -871,10 +1003,9 @@ def level_ml_mask(
                 #  we pass float32 for speed
                 img_for_model = np.asarray(img, dtype=np.float32, order="C")
                 # Expect ml_edges to return (H,W) uint8 {0,1} or bool mask
-                edge_mask = ml_edges(
+                edge_mask = _ml_edges_with_model(
+                    model,
                     img_for_model,
-                    model_path=model_path,
-                    device=str(torch_device),
                     threshold=threshold,
                     min_size=min_size,
                 )

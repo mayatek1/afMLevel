@@ -308,6 +308,36 @@ def _process_single_image(
     return predictedBG_linefit, predictedLev
 
 
+def subtract_median(image: np.ndarray, *, index: int | None = None) -> np.ndarray:
+    """
+    Subtract the median value from an image to enforce a zero-height reference.
+
+    This operation removes a constant offset by subtracting the median of all
+    pixels in the image. It is intended as a post-processing normalisation step
+    (e.g. for AFM image stacks) to ensure consistent relative height references
+    between frames, rather than as a physically meaningful background correction.
+
+    Parameters
+    ----------
+    image : np.ndarray
+        Input 2D image array from which the median value will be subtracted.
+    index : int or None, optional
+        Optional slice or frame index, used only for debug logging. If provided,
+        the median value removed from this image is logged at DEBUG level.
+
+    Returns
+    -------
+    np.ndarray
+        Image with its median value subtracted. The returned array has the same
+        shape as the input.
+    """
+    median = np.median(image)
+    image = image - median
+    if index is not None:
+        logger.debug("Slice %d: zeroing median (%.4g)", index, median)
+    return image
+
+
 # ~~~~~~~~~~~~~~~~~~~~~~~ MAIN FUNCTION ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
@@ -383,6 +413,8 @@ def level_ml_bg(
     if imarray.ndim == 2:
         logger.debug("Processing single image (H,W)=%s", imarray.shape)
         predictedBG, predictedLev = _process_single_image(model, imarray, line_order)
+        if zero_median and not background:
+            predictedLev = subtract_median(predictedLev)
         return predictedBG if background else predictedLev
 
     # Process 3D stack
@@ -395,8 +427,7 @@ def level_ml_bg(
         predictedBG, predictedLev = _process_single_image(model, imarray[i], line_order)
         BG_list.append(predictedBG)
         if zero_median:
-            median = np.median(predictedLev)
-            predictedLev = predictedLev - median
+            predictedLev = subtract_median(predictedLev, index=i)
         Lev_list.append(predictedLev)
     logger.info("All slices processed.")
     BG_stack = np.stack(BG_list, axis=0)

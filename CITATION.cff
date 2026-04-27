@@ -2,7 +2,7 @@
 # Visit https://bit.ly/cffinit to generate yours today!
 
 cff-version: 1.2.0
-title: afMLevel
+title: afMLevel: Deep-Learning for Levelling AFM Data
 message: >-
   If you use this software, please cite it using the
   metadata from this file.
@@ -22,11 +22,13 @@ authors:
     family-names: Heath
     email: G.R.Heath@leeds.ac.uk
     affiliation: University of Leeds
+year: 2026
 repository-code: 'https://github.com/mayatek1/afMLevel'
 url: 'https://github.com/mayatek1/afMLevel'
 abstract: >-
-  Python package to run machine learning models to level
-  atomic force microscopy data.
+  Python package for automatic levelling of atomic force microscopy (AFM) data
+  using pre-trained U-Net models for background prediction and feature-aware
+  image processing.
 keywords:
   - afm
   - atomic force microscopy

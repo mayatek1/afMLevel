@@ -10,6 +10,7 @@ repos:
         exclude: (^docs/|^notebooks/|^LICENSE$)
       - id: check-added-large-files
         args: ["--maxkb=500"]
+        exclude: (^tests/resources/)
       - id: check-merge-conflict
       - id: check-toml
 
