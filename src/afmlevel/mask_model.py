@@ -79,6 +79,7 @@ from skimage.morphology import (
     remove_small_objects,
 )
 
+from afmlevel.types import UNetConfig
 from afmlevel.unet import load_unet_model
 from afmlevel.utils import normalise, remove_small_zeros, swap01, xyplanefit
 
@@ -86,10 +87,10 @@ logger = logging.getLogger(__name__)
 
 # ~~~~~~~~~~~~~~~~~~~~~ MODEL SETTINGS ~~~~~~~~~~~~~~~~~~~~~
 
-UNET_CONFIG = {
+UNET_CONFIG: UNetConfig = {
     "filtersize": 7,
     "leakyrelu": False,
-    "dropoutprob": 0,
+    "dropoutprob": 0.0,
 }
 
 # ~~~~~~~~~~~~~~~~~~ HELPER FUNCTIONS ~~~~~~~~~~~~~~~~~~~~~

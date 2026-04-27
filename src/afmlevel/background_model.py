@@ -57,13 +57,15 @@ import math
 import numpy as np
 import torch
 
+from afmlevel.types import UNetConfig
 from afmlevel.unet import load_unet_model
 from afmlevel.utils import denormalise, linefit, normalise, xyplanefit
 
 logger = logging.getLogger(__name__)
 # ~~~~~~~~~~~~~~~~~~~~~ MODEL SETTINGS ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-UNET_CONFIG = {
+
+UNET_CONFIG: UNetConfig = {
     "filtersize": 9,
     "leakyrelu": False,
     "dropoutprob": 0,

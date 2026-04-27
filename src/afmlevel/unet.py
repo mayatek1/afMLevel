@@ -14,6 +14,7 @@ code paths, algorithms, and final behaviour were reviewed and validated by the a
 
 import logging
 import os
+from typing import Any, Mapping
 
 import torch
 import torch.nn as nn
@@ -27,7 +28,7 @@ _MODEL_CACHE: dict[tuple[str, str], torch.nn.Module] = {}
 def load_unet_model(
     model_path: str,
     n_channels: int,
-    config: dict,
+    config: Mapping[str, Any],
     device: torch.device,
 ) -> nn.Module:
     """
@@ -214,7 +215,7 @@ class UNet(nn.Module):
         self.final = nn.Conv2d(16, 1, 1)
         self.max_pool = nn.MaxPool2d(2)
 
-    def forward(self, x: torch.Tensor):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Perform a forward pass of the U-Net.
 
