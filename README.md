@@ -32,7 +32,7 @@ and `background_model` modules respectively. These tools allow the levelling of 
   an alternative to generating the mask by thresholding (e.g. by Otsu’s method, fixed or relative value methods) to process
   AFM images.
 
-![Model overviews](README_image1.png)
+![Model overviews](docs/images/afmlevel_overview.png)
 
 ### Model Weights
 
