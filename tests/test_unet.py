@@ -22,7 +22,6 @@ def test_unet_load_from_local_pth(tmp_path, tiny_unet_cpu):
     torch.save(tiny_unet_cpu.state_dict(), pth_file)
 
     config = {
-        "filtersize1": 3,
         "filtersize": 3,
         "leakyrelu": False,
         "dropoutprob": 0,

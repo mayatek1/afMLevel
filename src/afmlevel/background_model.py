@@ -64,7 +64,6 @@ logger = logging.getLogger(__name__)
 # ~~~~~~~~~~~~~~~~~~~~~ MODEL SETTINGS ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 UNET_CONFIG = {
-    "filtersize1": 9,
     "filtersize": 9,
     "leakyrelu": False,
     "dropoutprob": 0,

@@ -20,7 +20,6 @@ RESOURCES_DIR = TESTS_DIR / "resources"
 # ---------------------------------------------------------------------------
 # Expected outputs
 # ---------------------------------------------------------------------------
-
 # Expected outputs for the committed sample TIFFs.
 # Update these deliberately when model weights change — don't just fix failing tests.
 # Last updated: 2026-04-27
@@ -56,7 +55,6 @@ def tiny_unet_cpu():
     # filtersize must be odd; use 3 for speed in tests
     model = UNet(
         n_channels=1,
-        filtersize1=3,
         filtersize=3,
         leakyrelu=False,
         dropoutprob=0,
