@@ -118,18 +118,14 @@ class UNet(nn.Module):
     n_channels : int
         Number of input channels in the input image (e.g. 1 for grayscale,
         3 for RGB).
-    filtersize1 : int, optional
-        Kernel size for the first encoder block convolutions. Must be odd.
-        Default is 9.
     filtersize : int, optional
-        Kernel size for all remaining convolutional blocks. Must be odd.
-        Default is 9.
+        Kernel size for convolutional blocks. Must be odd. Default is 9.
     leakyrelu : bool, optional
         If True, use LeakyReLU activation. If False, use ReLU.
         Default is False.
     dropoutprob : float, optional
         Dropout probability applied after each convolutional layer.
-        Default is 0 (no dropout).
+        Default is 0.0 (no dropout).
 
     Attributes
     ----------
@@ -169,11 +165,14 @@ class UNet(nn.Module):
     """
 
     def __init__(
-        self, n_channels, filtersize1=9, filtersize=9, leakyrelu=False, dropoutprob=0
+        self,
+        n_channels: int,
+        filtersize: int = 9,
+        leakyrelu: bool = False,
+        dropoutprob: float = 0.0,
     ):
         super().__init__()
 
-        padding1 = (filtersize1 - 1) // 2
         padding = (filtersize - 1) // 2
 
         activation = nn.LeakyReLU(inplace=True) if leakyrelu else nn.ReLU(inplace=True)
@@ -190,19 +189,7 @@ class UNet(nn.Module):
                 nn.Dropout(dropoutprob),
             )
 
-        def double_conv1(in_channels, out_channels):
-            return nn.Sequential(
-                nn.Conv2d(in_channels, out_channels, filtersize1, padding=padding1),
-                nn.BatchNorm2d(out_channels),
-                activation,
-                nn.Dropout(dropoutprob),
-                nn.Conv2d(out_channels, out_channels, filtersize1, padding=padding1),
-                nn.BatchNorm2d(out_channels),
-                activation,
-                nn.Dropout(dropoutprob),
-            )
-
-        self.dc1 = double_conv1(n_channels, 16)
+        self.dc1 = double_conv(n_channels, 16)
         self.dc2 = double_conv(16, 32)
         self.dc3 = double_conv(32, 64)
         self.dc4 = double_conv(64, 128)
@@ -227,7 +214,7 @@ class UNet(nn.Module):
         self.final = nn.Conv2d(16, 1, 1)
         self.max_pool = nn.MaxPool2d(2)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor):
         """
         Perform a forward pass of the U-Net.
 

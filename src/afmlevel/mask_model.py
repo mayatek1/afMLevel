@@ -874,22 +874,14 @@ def level_ml_mask(
         - shape (N, H, W) if input was 3D
         dtype float64 (matching typical leveling pipeline expectations)
 
-    Internals
-    ---------
-    For efficiency, `level_ml_mask()` does not invoke the public `ml_mask()` or
-    `ml_edges()` functions internally. Instead, it performs equivalent operations
-    using internal helper functions with a shared, pre-loaded model instance. This
-    avoids repeated model loading and significantly improves performance for large
-    image stacks.
-
-    This is an implementation detail and does not affect the numerical meaning of
-    the generated masks.
 
     Notes
     -----
-    - The raw outputs of `ml_mask` and `ml_edges` (binary) is converted to a boolean
-      mask then **inverted** so that True = foreground (matching the mask polarity
-      expected by pnanolocz filters).
+    - For efficiency, `level_ml_mask()` does not invoke the public `ml_mask()` or
+      `ml_edges()` functions internally. Instead, it performs equivalent operations
+      using internal helper functions with a shared, pre-loaded model instance. This
+      avoids repeated model loading and significantly improves performance for large
+      image stacks.
     - If the input image was 2D, the internal batch dimension is removed before
       returning.
     """

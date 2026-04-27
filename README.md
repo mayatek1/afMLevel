@@ -15,7 +15,7 @@
 
 AFM image levelling, to correct background tilt and line-by-line scan artifacts, is a critical preprocessing step that
 typically requires users to manually apply operations, particularly for complex sample topographies, to ensure accurate
-pixel heights. The large frame counts of high-speed AFM movies makes this prohibitively time-consuming. afMLevel provides
+pixel heights. The large frame counts of high-speed AFM movies makes this prohibitively time-consuming. **afMLevel** provides
 two deep-learning approaches that fully automate this process without altering local pixel intensities, enabling efficient
 batch processing of large datasets.
 
@@ -40,7 +40,7 @@ Pre‑trained PyTorch model weights for the **MLMask** and **MLBackground** U‑
 parameters, are hosted in our [Hugging Face repositories](https://huggingface.co/Heath-AFM-Lab). These are automatically
 downloaded and cached when the model is first run and then reused for subsequent applications of the model.
 
-The models are used for inference only; afMLevel does not retrain or modify the weights during use.
+The models are used for inference only; **afMLevel** does not retrain or modify the weights during use.
 
 ## MLBackground Levelling Routine
 
@@ -96,7 +96,7 @@ The available **afMLevel** mask levelling routines are:
 
 ## **Quick-start guide**
 
-The easiest way to install afMLevel is to create a new conda environment and then install the package using pip.
+The easiest way to install **afMLevel** is to create a new conda environment and then install the package using pip.
 
 ### Create new conda environment
 
@@ -164,7 +164,7 @@ The demo notebooks also give an example of loading AFM files or TIFF files to Nu
 
 ## Dependencies
 
-afMLevel requires Python ≥ 3.11 and the following packages, all installed automatically via pip:
+**afMLevel** requires Python ≥ 3.11 and the following packages, all installed automatically via pip:
 
 | Package | Purpose |
 | --- | --- |

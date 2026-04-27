@@ -1,6 +1,7 @@
 """Utility functions for afMLevel, including image processing and normalisation."""
 
 import logging
+from typing import Literal
 
 import numpy as np
 from scipy.ndimage import generate_binary_structure, label
@@ -8,7 +9,15 @@ from scipy.ndimage import generate_binary_structure, label
 logger = logging.getLogger(__name__)
 
 
-def remove_small_zeros(arr, min_size=50, allow_bool=True, connectivity=2):
+Connectivity = Literal[1, 2]
+
+
+def remove_small_zeros(
+    arr: np.ndarray,
+    min_size: int = 50,
+    allow_bool: bool = True,
+    connectivity: Connectivity = 2,
+) -> np.ndarray:
     """
     Removes isolated 0s or small clusters of 0s in a binary array.
 
@@ -36,7 +45,8 @@ def remove_small_zeros(arr, min_size=50, allow_bool=True, connectivity=2):
         raise ValueError(
             f"remove_small_zeros() expects a 2D array, got shape {arr.shape}"
         )
-
+    if connectivity not in (1, 2):
+        raise ValueError("connectivity must be 1 or 2")
     # Dtype handling
     if allow_bool and arr.dtype == np.bool_:
         work = ~arr  # invert booleans: True where zeros (background)
@@ -104,7 +114,7 @@ def remove_small_zeros(arr, min_size=50, allow_bool=True, connectivity=2):
     return cleaned
 
 
-def normalise(imarray: np.ndarray):
+def normalise(imarray: np.ndarray) -> tuple[np.ndarray, float, float]:
     """
     Normalise an array to the range [0, 1].
 
@@ -133,7 +143,7 @@ def normalise(imarray: np.ndarray):
     return imnorm, min_val, data_range
 
 
-def denormalise(imnorm: np.ndarray, min_val: float, data_range: float):
+def denormalise(imnorm: np.ndarray, min_val: float, data_range: float) -> np.ndarray:
     """
     Restore a normalised array to its original scale.
 
@@ -154,7 +164,7 @@ def denormalise(imnorm: np.ndarray, min_val: float, data_range: float):
     return imnorm * data_range + min_val
 
 
-def linefit(imarray: np.ndarray, polyx: int):
+def linefit(imarray: np.ndarray, polyx: int) -> np.ndarray:
     """
     Fit a polynomial along each row of a 2D array.
 
@@ -192,7 +202,7 @@ def linefit(imarray: np.ndarray, polyx: int):
         return y2
 
 
-def swap01(maskarray: np.ndarray):
+def swap01(maskarray: np.ndarray) -> np.ndarray:
     """
     Swap binary values if zeros are more frequent than ones.
 
@@ -218,7 +228,7 @@ def swap01(maskarray: np.ndarray):
     return maskarray
 
 
-def xyplanefit(imarray: np.ndarray, polyx: int, polyy: int):
+def xyplanefit(imarray: np.ndarray, polyx: int, polyy: int) -> np.ndarray:
     """
     Remove a separable polynomial plane from a 2D array.
 
