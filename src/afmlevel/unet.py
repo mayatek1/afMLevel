@@ -12,11 +12,12 @@ assistance and for providing debugging, refactoring and documentation suggestion
 code paths, algorithms, and final behaviour were reviewed and validated by the authors.
 """
 
+import logging
 import os
+from typing import Any, Mapping
 
 import torch
 import torch.nn as nn
-import logging
 from huggingface_hub import hf_hub_download
 
 logger = logging.getLogger(__name__)
@@ -27,7 +28,7 @@ _MODEL_CACHE: dict[tuple[str, str], torch.nn.Module] = {}
 def load_unet_model(
     model_path: str,
     n_channels: int,
-    config: dict,
+    config: Mapping[str, Any],
     device: torch.device,
 ) -> nn.Module:
     """
@@ -104,12 +105,75 @@ def load_unet_model(
 
 
 class UNet(nn.Module):
+    """
+    Deep U-Net convolutional neural network for 2D image-to-image tasks.
+
+    This implementation follows a symmetric encoder-decoder (U-Net) architecture
+    with skip connections between corresponding downsampling and upsampling stages.
+    Each stage consists of two convolutional layers with batch normalization,
+    activation, and optional dropout. Spatial resolution is reduced using max pooling
+    and restored using transposed convolutions.
+
+    Parameters
+    ----------
+    n_channels : int
+        Number of input channels in the input image (e.g. 1 for grayscale,
+        3 for RGB).
+    filtersize : int, optional
+        Kernel size for convolutional blocks. Must be odd. Default is 9.
+    leakyrelu : bool, optional
+        If True, use LeakyReLU activation. If False, use ReLU.
+        Default is False.
+    dropoutprob : float, optional
+        Dropout probability applied after each convolutional layer.
+        Default is 0.0 (no dropout).
+
+    Attributes
+    ----------
+    dc1-dc13 : nn.Sequential
+        Double-convolution blocks consisting of:
+        Conv2d → BatchNorm → Activation → Dropout (x2).
+    up1-up6 : nn.ConvTranspose2d
+        Transposed convolution layers used for upsampling in the decoder.
+    final : nn.Conv2d
+        Final 1x1 convolution mapping feature maps to a single output channel.
+    max_pool : nn.MaxPool2d
+        Max pooling layer with kernel size 2 used for downsampling.
+
+    Forward Pass
+    ------------
+    The forward pass encodes the input through successive downsampling blocks,
+    stores intermediate feature maps for skip connections, and then decodes
+    using upsampling blocks with concatenation of corresponding encoder features.
+
+    Parameters
+    ----------
+    x : torch.Tensor
+        Input tensor of shape (batch_size, n_channels, height, width).
+
+    Returns
+    -------
+    torch.Tensor
+        Output tensor of shape (batch_size, 1, height, width).
+
+    Notes
+    -----
+    - Padding is chosen such that spatial dimensions are preserved within
+      each convolutional block.
+    - The network depth consists of 7 encoder levels and 6 decoder levels.
+    - Suitable for dense prediction tasks such as segmentation or image
+      reconstruction.
+    """
+
     def __init__(
-        self, n_channels, filtersize1=9, filtersize=9, leakyrelu=False, dropoutprob=0
+        self,
+        n_channels: int,
+        filtersize: int = 9,
+        leakyrelu: bool = False,
+        dropoutprob: float = 0.0,
     ):
         super().__init__()
 
-        padding1 = (filtersize1 - 1) // 2
         padding = (filtersize - 1) // 2
 
         activation = nn.LeakyReLU(inplace=True) if leakyrelu else nn.ReLU(inplace=True)
@@ -126,19 +190,7 @@ class UNet(nn.Module):
                 nn.Dropout(dropoutprob),
             )
 
-        def double_conv1(in_channels, out_channels):
-            return nn.Sequential(
-                nn.Conv2d(in_channels, out_channels, filtersize1, padding=padding1),
-                nn.BatchNorm2d(out_channels),
-                activation,
-                nn.Dropout(dropoutprob),
-                nn.Conv2d(out_channels, out_channels, filtersize1, padding=padding1),
-                nn.BatchNorm2d(out_channels),
-                activation,
-                nn.Dropout(dropoutprob),
-            )
-
-        self.dc1 = double_conv1(n_channels, 16)
+        self.dc1 = double_conv(n_channels, 16)
         self.dc2 = double_conv(16, 32)
         self.dc3 = double_conv(32, 64)
         self.dc4 = double_conv(64, 128)
@@ -163,7 +215,34 @@ class UNet(nn.Module):
         self.final = nn.Conv2d(16, 1, 1)
         self.max_pool = nn.MaxPool2d(2)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Perform a forward pass of the U-Net.
+
+        The input tensor is passed through the encoder path with successive
+        downsampling via max pooling, while intermediate feature maps are stored
+        for skip connections. The decoder path then progressively upsamples the
+        representation using transposed convolutions and concatenates the
+        corresponding encoder feature maps before applying convolutional blocks.
+        A final 1x1 convolution produces the output map.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input tensor of shape (batch_size, n_channels, height, width).
+
+        Returns
+        -------
+        torch.Tensor
+            Output tensor of shape (batch_size, 1, height, width).
+
+        Notes
+        -----
+        - Spatial dimensions of the output match the input due to symmetric
+        padding within convolutional blocks.
+        - Skip connections are implemented using channel-wise concatenation
+        along dimension 1.
+        """
         x1 = self.dc1(x)
         x2 = self.dc2(self.max_pool(x1))
         x3 = self.dc3(self.max_pool(x2))

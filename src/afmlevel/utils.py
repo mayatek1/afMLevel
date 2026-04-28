@@ -1,13 +1,23 @@
 """Utility functions for afMLevel, including image processing and normalisation."""
 
+import logging
+from typing import Literal
+
 import numpy as np
 from scipy.ndimage import generate_binary_structure, label
-import logging
 
 logger = logging.getLogger(__name__)
 
 
-def remove_small_zeros(arr, min_size=50, allow_bool=True, connectivity=2):
+Connectivity = Literal[1, 2]
+
+
+def remove_small_zeros(
+    arr: np.ndarray,
+    min_size: int = 50,
+    allow_bool: bool = True,
+    connectivity: Connectivity = 2,
+) -> np.ndarray:
     """
     Removes isolated 0s or small clusters of 0s in a binary array.
 
@@ -28,13 +38,15 @@ def remove_small_zeros(arr, min_size=50, allow_bool=True, connectivity=2):
     Returns
     -------
     np.ndarray
-        Cleaned array (same shape and dtype as input), where small zero regions are set to 1.
+        Cleaned array (same shape and dtype as input), where small zero
+        regions are set to 1.
     """
     if arr.ndim != 2:
         raise ValueError(
             f"remove_small_zeros() expects a 2D array, got shape {arr.shape}"
         )
-
+    if connectivity not in (1, 2):
+        raise ValueError("connectivity must be 1 or 2")
     # Dtype handling
     if allow_bool and arr.dtype == np.bool_:
         work = ~arr  # invert booleans: True where zeros (background)
@@ -42,10 +54,10 @@ def remove_small_zeros(arr, min_size=50, allow_bool=True, connectivity=2):
     else:
         if arr.dtype != np.uint8:
             logger.error(
-                f"remove_small_zeros() expected dtype uint8{ ' or bool' if allow_bool else ''}, got {arr.dtype}"
+                f"remove_small_zeros() expected dtype uint8{ ' or bool' if allow_bool else ''}, got {arr.dtype}"  # noqa: E501
             )
             raise TypeError(
-                f"Expected dtype uint8{ ' or bool' if allow_bool else ''}, got {arr.dtype}"
+                f"Expected dtype uint8{ ' or bool' if allow_bool else ''}, got {arr.dtype}"  # noqa: E501
             )
         dtype_msg = "uint8"
         # Enforce binary content {0,1}
@@ -102,7 +114,27 @@ def remove_small_zeros(arr, min_size=50, allow_bool=True, connectivity=2):
     return cleaned
 
 
-def normalise(imarray):
+def normalise(imarray: np.ndarray) -> tuple[np.ndarray, float, float]:
+    """
+    Normalise an array to the range [0, 1].
+
+    The input array is linearly scaled such that its minimum value maps to 0
+    and its maximum value maps to 1.
+
+    Parameters
+    ----------
+    imarray : np.ndarray
+        Input numeric array.
+
+    Returns
+    -------
+    imnorm : np.ndarray
+        Normalised array with values in the range [0, 1].
+    min_val : float
+        Minimum value of the input array.
+    data_range : float
+        Range of the input array (max - min).
+    """
     min_val = np.min(imarray)
     max_val = np.max(imarray)
     data_range = max_val - min_val
@@ -111,11 +143,50 @@ def normalise(imarray):
     return imnorm, min_val, data_range
 
 
-def denormalise(imnorm, min_val, data_range):
+def denormalise(imnorm: np.ndarray, min_val: float, data_range: float) -> np.ndarray:
+    """
+    Restore a normalised array to its original scale.
+
+    Parameters
+    ----------
+    imnorm : np.ndarray
+        Normalised array, typically produced by `normalise`.
+    min_val : float
+        Minimum value used during normalisation.
+    data_range : float
+        Data range used during normalisation.
+
+    Returns
+    -------
+    np.ndarray
+        Array rescaled to the original data range.
+    """
     return imnorm * data_range + min_val
 
 
-def linefit(imarray, polyx):
+def linefit(imarray: np.ndarray, polyx: int) -> np.ndarray:
+    """
+    Fit a polynomial along each row of a 2D array.
+
+    For each row, a polynomial of degree `polyx` is fitted to the valid
+    (finite) values and evaluated across the full row.
+
+    Parameters
+    ----------
+    imarray : np.ndarray
+        2D input array.
+    polyx : int
+        Polynomial degree for the row-wise fit. Must be greater than 0.
+
+    Returns
+    -------
+    np.ndarray
+        2D array of the same shape containing the fitted values.
+
+    Notes
+    -----
+    Rows are fitted independently. All finite values are treated as valid.
+    """
     mask = imarray > -np.inf
     if polyx > 0:
         x = np.arange(imarray.shape[1])
@@ -131,7 +202,23 @@ def linefit(imarray, polyx):
         return y2
 
 
-def swap01(maskarray):
+def swap01(maskarray: np.ndarray) -> np.ndarray:
+    """
+    Swap binary values if zeros are more frequent than ones.
+
+    If the number of zeros exceeds the number of ones, the array values are
+    inverted (0 ↔ 1). Otherwise, the array is returned unchanged.
+
+    Parameters
+    ----------
+    maskarray : np.ndarray
+        Binary array containing values 0 and 1.
+
+    Returns
+    -------
+    np.ndarray
+        Binary array with values possibly inverted.
+    """
     num_zeros = np.sum(maskarray == 0)
     num_ones = np.sum(maskarray == 1)
 
@@ -141,7 +228,33 @@ def swap01(maskarray):
     return maskarray
 
 
-def xyplanefit(imarray, polyx, polyy):
+def xyplanefit(imarray: np.ndarray, polyx: int, polyy: int) -> np.ndarray:
+    """
+    Remove a separable polynomial plane from a 2D array.
+
+    A polynomial of degree `polyx` is fitted to the column-wise mean and
+    subtracted. A polynomial of degree `polyy` is then fitted to the
+    row-wise mean of the residual and subtracted.
+
+    Parameters
+    ----------
+    imarray : np.ndarray
+        2D input array.
+    polyx : int
+        Polynomial degree for fitting along the x-direction (columns).
+    polyy : int
+        Polynomial degree for fitting along the y-direction (rows).
+
+    Returns
+    -------
+    np.ndarray
+        Array with the fitted x-y polynomial plane removed.
+
+    Notes
+    -----
+    This performs a separable plane removal and is not equivalent to a full
+    2D polynomial surface fit.
+    """
     mc = np.mean(imarray, axis=0)
     x = np.arange(0, len(mc), 1)
     p = np.polyfit(x, mc, polyx)

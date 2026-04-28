@@ -69,7 +69,7 @@ keywords = [
 ]
 
 classifiers = [
-  "Development Status :: 2 - Pre-Alpha",
+  "Development Status :: 3 - Alpha",
   "Intended Audience :: Science/Research",
   "License :: OSI Approved :: BSD License",
   "Natural Language :: English",
@@ -79,18 +79,25 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
   "Topic :: Scientific/Engineering :: Image Processing",
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Topic :: Scientific/Engineering :: Physics",
+  "Topic :: Scientific/Engineering :: Visualization",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0",
     "pytest-cov",
+    "tifffile",
     "pre-commit",
     "isort",
     "ruff",
     "black",
     "codespell>=2.3.0",
     "setuptools_scm",
+]
+notebooks = [
+    "jupyter",
+    "tifffile",
 ]
 
 [project.urls]
@@ -165,8 +172,11 @@ check-filenames = false
 check-hidden = false
 
 [tool.pytest.ini_options]
-addopts = "--cov=afmlevel --cov-report=term-missing --cov-append"
+addopts = "--cov=afmlevel --cov-report=term-missing --cov-append -m 'not slow'"
 testpaths = ["tests"]
+markers = [
+    "slow: tests requiring real model weights downloaded from HuggingFace (deselect by default)",
+]
 
 [tool.coverage.run]
 branch = true
