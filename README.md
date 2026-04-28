@@ -186,10 +186,10 @@ The available **afMLevel** mask levelling routines are:
 
 | Method                    | Processing steps |
 |---------------------------|------------------|
-| MLMask                    | [1st‑order x–y plane][plane] → single `ml_mask()` → masked [median line subtraction][median] → masked [1st‑order x–y plane][plane] |
-| Iterative MLMask          | [1st‑order x–y plane][plane] → 3× (`ml_mask()` + masked [1st‑order x–y plane][plane]) → masked [1st‑order x–y plane][plane] → 1× `ml_mask()` → [median line][median] → [2nd‑order x plane][plane] |
-| Multi-plane MLMask        | [1st‑order x–y plane][plane] → 3× (`ml_edges()` + masked [weighted 2nd‑order x–y plane][wplane]) → masked [weighted median line][wmedian] → `ml_edges()` → masked [weighted 2nd‑order x–y plane][wplane] → masked [weighted median line][wmedian] |
-| Multi-plane MLMask + line | [1st‑order x–y plane][plane] → [median line subtraction][median] → `ml_edges()` → 3× (`ml_edges()` + masked [weighted 2nd‑order x–y plane][wplane]) → masked [weighted median line][wmedian] → `ml_edges()` → masked [weighted 2nd‑order x–y plane][wplane] → masked [weighted median line][wmedian] |
+| ML Mask                   | [1st‑order x–y plane][plane] → single `ml_mask()` → masked [median line subtraction][median] → masked [1st‑order x–y plane][plane] |
+| iterative ML mask         | [1st‑order x–y plane][plane] → 3× (`ml_mask()` + masked [1st‑order x–y plane][plane]) → masked [1st‑order x plane][plane] → 1× `ml_mask()` → [median line][median] → [2nd‑order x plane][plane] |
+| multi-plane-ML-it         | [1st‑order x–y plane][plane] → 3× (`ml_edges()` + masked [weighted 2nd‑order x–y plane][wplane]) → masked [weighted median line][wmedian] → `ml_edges()` → masked [weighted 2nd‑order x–y plane][wplane] → masked [weighted median line][wmedian] |
+| multi-plane-ML-it-line    | [1st‑order x–y plane][plane] → [median line subtraction][median] → 3× (`ml_edges()` + masked [weighted 2nd‑order x–y plane][wplane]) → masked [weighted median line][wmedian] → `ml_edges()` → masked [weighted 2nd‑order x–y plane][wplane] → masked [weighted median line][wmedian] |
 
 [plane]: https://github.com/derollins/Python-Nanolocz-Library/blob/f3f782ebb32a2c4c80e8135b7f417c25e12f0afc/src/pnanolocz/level.py#L139
 [median]: https://github.com/derollins/Python-Nanolocz-Library/blob/f3f782ebb32a2c4c80e8135b7f417c25e12f0afc/src/pnanolocz/level.py#L400
@@ -204,14 +204,14 @@ The available **afMLevel** mask levelling routines are:
 
 ## Use with other software
 
-Since **afMLevel** works primarily with Numpy arrays in order to load and process raw data from AFM control software
+Since **afMLevel** works primarily with Numpy arrays, in order to load and process raw data from AFM control software
 external readers are required to convert the data into an array. This can be done with tools such as
 [AFMReader](https://github.com/AFM-SPM/AFMReader), [playNano](https://github.com/derollins/playNano)
 and [afmformats](https://github.com/AFM-analysis/afmformats). Examples using **AFMReader** and **playNano** are given in
 the [notebooks](#demonstration-notebooks).
 
 **afMLevel** is also supported as a plugin for [playNano](https://github.com/derollins/playNano) out of the box. Simply install
-both packages in the same environments and you will be able to use the `level_ml_bg` and `level_ml_mask` functions within
+both packages in the same environment and you will be able to use the `level_ml_bg` and `level_ml_mask` functions within
 **playNano** straight away. See the [AFMlevel_video_demo notebook](notebooks/afMlevel_video_demo.ipynb) for a programmatic demonstration.
 
 ## Contributing and Issues
