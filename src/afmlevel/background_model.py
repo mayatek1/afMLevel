@@ -68,7 +68,7 @@ logger = logging.getLogger(__name__)
 UNET_CONFIG: UNetConfig = {
     "filtersize": 9,
     "leakyrelu": False,
-    "dropoutprob": 0,
+    "dropoutprob": 0.0,
 }
 
 # ~~~~~~~~~~~~~~~~ TILE SPLITTING & STICHING ~~~~~~~~~~~~~~~~~~~~~~
