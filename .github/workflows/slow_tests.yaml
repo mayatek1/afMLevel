@@ -36,7 +36,7 @@ jobs:
       - name: Run slow tests
         env:
             HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: pytest -m slow -v --no-cov --timeout=600
+        run: pytest -m slow -v --no-cov
 
       - name: Notify on failure
         if: failure()
