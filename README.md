@@ -187,7 +187,7 @@ The available **afMLevel** mask levelling routines are:
 | Method                    | Processing steps |
 |---------------------------|------------------|
 | ML Mask                   | [1st‑order x–y plane][plane] → single `ml_mask()` → masked [median line subtraction][median] → masked [1st‑order x–y plane][plane] |
-| iterative ML mask         | [1st‑order x–y plane][plane] → 3× (`ml_mask()` + masked [1st‑order x–y plane][plane]) → masked [1st‑order x plane][plane] → 1× `ml_mask()` → [median line][median] → [2nd‑order x plane][plane] |
+| iterative ML mask         | [1st‑order x–y plane][plane] → 2× (`ml_mask()` + masked [1st‑order x–y plane][plane]) → `ml_mask()` → [median line][median] → masked [1st‑order x plane][plane] → 1× `ml_mask()` → [median line][median] → [2nd‑order x plane][plane] |
 | multi-plane-ML-it         | [1st‑order x–y plane][plane] → 3× (`ml_edges()` + masked [weighted 2nd‑order x–y plane][wplane]) → masked [weighted median line][wmedian] → `ml_edges()` → masked [weighted 2nd‑order x–y plane][wplane] → masked [weighted median line][wmedian] |
 | multi-plane-ML-it-line    | [1st‑order x–y plane][plane] → [median line subtraction][median] → 3× (`ml_edges()` + masked [weighted 2nd‑order x–y plane][wplane]) → masked [weighted median line][wmedian] → `ml_edges()` → masked [weighted 2nd‑order x–y plane][wplane] → masked [weighted median line][wmedian] |
 
