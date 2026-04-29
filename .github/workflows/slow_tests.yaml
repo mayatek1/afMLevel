@@ -1,0 +1,43 @@
+name: Slow Tests (Real Models)
+
+on:
+  schedule:
+    - cron: "0 2 * * *"   # 2am UTC nightly
+  workflow_dispatch:        # manual trigger button in GitHub UI
+
+jobs:
+  slow-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Cache HuggingFace model weights
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: hf-models-v1-${{ hashFiles('src/afmlevel/background_model.py', 'src/afmlevel/mask_model.py') }}
+          restore-keys: hf-models-v1-
+
+      - name: Install PyTorch CPU
+        run: pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+      - name: Install package with dev dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Run slow tests
+        env:
+            HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: pytest -m slow -v --no-cov
+
+      - name: Notify on failure
+        if: failure()
+        run: echo "::warning::Slow tests failed — real model output may have regressed"

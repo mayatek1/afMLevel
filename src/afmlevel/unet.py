@@ -12,53 +12,77 @@ assistance and for providing debugging, refactoring and documentation suggestion
 code paths, algorithms, and final behaviour were reviewed and validated by the authors.
 """
 
+import logging
 import os
-from typing import Dict, Tuple
+from typing import Any, Mapping
 
 import torch
 import torch.nn as nn
-import logging
+from huggingface_hub import hf_hub_download
 
 logger = logging.getLogger(__name__)
 # Global model cache
-_MODEL_CACHE: Dict[Tuple[str, str], torch.nn.Module] = {}
+_MODEL_CACHE: dict[tuple[str, str], torch.nn.Module] = {}
 
 
 def load_unet_model(
     model_path: str,
     n_channels: int,
-    config: dict,
+    config: Mapping[str, Any],
     device: torch.device,
-) -> torch.nn.Module:
+) -> nn.Module:
     """
-    Unified model loader and cache for both mask and background U-Net models.
+    Load a U-Net model from either a local .pth file or a Hugging Face Hub repository.
 
     Parameters
     ----------
     model_path : str
-        Path to the .pth (state_dict)
+        Path or identifier for the model. Supported formats:
+        - Local file path: "path/to/model.pth"
+        - HuggingFace repo: "user/repo" (loads "model.pth")
+        - HuggingFace repo with explicit file: "user/repo::file.pth"
     n_channels : int
         Number of input channels (usually 1)
     config : dict
-        U-Net configuration (filter sizes etc)
+        Dictionary of U-Net configuration parameters.
     device : torch.device
-        'cuda' or 'cpu'
+        Device on which to load the model. Currently: 'cuda' or 'cpu'
 
     Returns
     -------
-    torch.nn.Module
+    nn.Module
         Model loaded on the requested device.
+
+    Notes
+    -----
+    - Models from HuggingFace are cached locally and reused automatically.
+    - The function maintains an internal cache keyed by (resolved_path, device)
+      to avoid reloading models repeatedly within a session.
     """
-    key = (os.path.abspath(model_path), str(device))
+    # Check HF format:  "repo::filename"
+    if "::" in model_path:
+        repo_id, filename = model_path.split("::", 1)
+        hf_file = hf_hub_download(repo_id=repo_id, filename=filename)
+        real_path = hf_file
+
+    # If model_path has no extension, treat as HF repo with default filename
+    elif not os.path.exists(model_path):
+        # assume repo_id and default filename "model.pth"
+        repo_id = model_path
+        hf_file = hf_hub_download(repo_id=repo_id, filename="model.pth")
+        real_path = hf_file
+
+    else:
+        # local file
+        real_path = model_path
+
+    key = (os.path.abspath(real_path), str(device))
 
     if key in _MODEL_CACHE:
         logger.debug("Reusing cached UNet for key=%s", key)
         return _MODEL_CACHE[key]
 
-    if not os.path.exists(model_path):
-        logger.error("Model file not found: %s", model_path)
-        raise FileNotFoundError(f"Model file not found: {model_path}")
-
+    logger.info(f"Loading UNet weights from: {real_path}")
     logger.info(
         "Loading UNet (n_channels=%s, device=%s, config=%s)",
         n_channels,
@@ -67,24 +91,89 @@ def load_unet_model(
     )
     model = UNet(n_channels, **config).to(device)
 
-    # Safe loading: requires your .pth to be a pure state_dict
-    state = torch.load(model_path, map_location=device, weights_only=True)
+    # Always load from the TRUE resolved file path (real_path)
+    try:
+        state = torch.load(real_path, map_location=device, weights_only=True)
+    except TypeError:
+        state = torch.load(real_path, map_location=device)
     model.load_state_dict(state)
     model.eval()
-    logger.debug("UNet loaded & set to eval() from %s", model_path)
 
     _MODEL_CACHE[key] = model
-    logger.info("Model loaded & cached: %s", model_path)
+    logger.info(f"Model loaded & cached from: {real_path}")
     return model
 
 
 class UNet(nn.Module):
+    """
+    Deep U-Net convolutional neural network for 2D image-to-image tasks.
+
+    This implementation follows a symmetric encoder-decoder (U-Net) architecture
+    with skip connections between corresponding downsampling and upsampling stages.
+    Each stage consists of two convolutional layers with batch normalization,
+    activation, and optional dropout. Spatial resolution is reduced using max pooling
+    and restored using transposed convolutions.
+
+    Parameters
+    ----------
+    n_channels : int
+        Number of input channels in the input image (e.g. 1 for grayscale,
+        3 for RGB).
+    filtersize : int, optional
+        Kernel size for convolutional blocks. Must be odd. Default is 9.
+    leakyrelu : bool, optional
+        If True, use LeakyReLU activation. If False, use ReLU.
+        Default is False.
+    dropoutprob : float, optional
+        Dropout probability applied after each convolutional layer.
+        Default is 0.0 (no dropout).
+
+    Attributes
+    ----------
+    dc1-dc13 : nn.Sequential
+        Double-convolution blocks consisting of:
+        Conv2d → BatchNorm → Activation → Dropout (x2).
+    up1-up6 : nn.ConvTranspose2d
+        Transposed convolution layers used for upsampling in the decoder.
+    final : nn.Conv2d
+        Final 1x1 convolution mapping feature maps to a single output channel.
+    max_pool : nn.MaxPool2d
+        Max pooling layer with kernel size 2 used for downsampling.
+
+    Forward Pass
+    ------------
+    The forward pass encodes the input through successive downsampling blocks,
+    stores intermediate feature maps for skip connections, and then decodes
+    using upsampling blocks with concatenation of corresponding encoder features.
+
+    Parameters
+    ----------
+    x : torch.Tensor
+        Input tensor of shape (batch_size, n_channels, height, width).
+
+    Returns
+    -------
+    torch.Tensor
+        Output tensor of shape (batch_size, 1, height, width).
+
+    Notes
+    -----
+    - Padding is chosen such that spatial dimensions are preserved within
+      each convolutional block.
+    - The network depth consists of 7 encoder levels and 6 decoder levels.
+    - Suitable for dense prediction tasks such as segmentation or image
+      reconstruction.
+    """
+
     def __init__(
-        self, n_channels, filtersize1=9, filtersize=9, leakyrelu=False, dropoutprob=0
+        self,
+        n_channels: int,
+        filtersize: int = 9,
+        leakyrelu: bool = False,
+        dropoutprob: float = 0.0,
     ):
         super().__init__()
 
-        padding1 = (filtersize1 - 1) // 2
         padding = (filtersize - 1) // 2
 
         activation = nn.LeakyReLU(inplace=True) if leakyrelu else nn.ReLU(inplace=True)
@@ -101,19 +190,7 @@ class UNet(nn.Module):
                 nn.Dropout(dropoutprob),
             )
 
-        def double_conv1(in_channels, out_channels):
-            return nn.Sequential(
-                nn.Conv2d(in_channels, out_channels, filtersize1, padding=padding1),
-                nn.BatchNorm2d(out_channels),
-                activation,
-                nn.Dropout(dropoutprob),
-                nn.Conv2d(out_channels, out_channels, filtersize1, padding=padding1),
-                nn.BatchNorm2d(out_channels),
-                activation,
-                nn.Dropout(dropoutprob),
-            )
-
-        self.dc1 = double_conv1(n_channels, 16)
+        self.dc1 = double_conv(n_channels, 16)
         self.dc2 = double_conv(16, 32)
         self.dc3 = double_conv(32, 64)
         self.dc4 = double_conv(64, 128)
@@ -138,7 +215,34 @@ class UNet(nn.Module):
         self.final = nn.Conv2d(16, 1, 1)
         self.max_pool = nn.MaxPool2d(2)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Perform a forward pass of the U-Net.
+
+        The input tensor is passed through the encoder path with successive
+        downsampling via max pooling, while intermediate feature maps are stored
+        for skip connections. The decoder path then progressively upsamples the
+        representation using transposed convolutions and concatenates the
+        corresponding encoder feature maps before applying convolutional blocks.
+        A final 1x1 convolution produces the output map.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input tensor of shape (batch_size, n_channels, height, width).
+
+        Returns
+        -------
+        torch.Tensor
+            Output tensor of shape (batch_size, 1, height, width).
+
+        Notes
+        -----
+        - Spatial dimensions of the output match the input due to symmetric
+        padding within convolutional blocks.
+        - Skip connections are implemented using channel-wise concatenation
+        along dimension 1.
+        """
         x1 = self.dc1(x)
         x2 = self.dc2(self.max_pool(x1))
         x3 = self.dc3(self.max_pool(x2))

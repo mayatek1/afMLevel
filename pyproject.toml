@@ -15,10 +15,10 @@ readme = "README.md"
 license = { text = "BSD-3-Clause" }
 requires-python = ">=3.11"
 dependencies = [
-  "torch",
+  "torch>=2.0",
   "pytorch-msssim",
   "scipy",
-  "opencv-python",
+  "opencv-python-headless",
   "numpy",
   "pillow",
   "scikit-learn",
@@ -26,6 +26,7 @@ dependencies = [
   "pandas",
   "matplotlib",
   "pnanolocz",
+  "huggingface_hub",
 ]
 keywords = [
   # Core domain
@@ -68,7 +69,7 @@ keywords = [
 ]
 
 classifiers = [
-  "Development Status :: 2 - Pre-Alpha",
+  "Development Status :: 3 - Alpha",
   "Intended Audience :: Science/Research",
   "License :: OSI Approved :: BSD License",
   "Natural Language :: English",
@@ -77,12 +78,16 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Topic :: Scientific/Engineering :: Image Processing",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Topic :: Scientific/Engineering :: Physics",
+  "Topic :: Scientific/Engineering :: Visualization",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0",
     "pytest-cov",
+    "tifffile",
     "pre-commit",
     "isort",
     "ruff",
@@ -90,9 +95,14 @@ dev = [
     "codespell>=2.3.0",
     "setuptools_scm",
 ]
+notebooks = [
+    "jupyter",
+    "tifffile",
+]
 
 [project.urls]
 Homepage = "https://github.com/mayatek1/afMLevel"
+Issues = "https://github.com/mayatek1/afMLevel/issues"
 
 [project.entry-points."playnano.video_processing"]
 level_ml_bg = "afmlevel.background_model:level_ml_bg"
@@ -162,8 +172,11 @@ check-filenames = false
 check-hidden = false
 
 [tool.pytest.ini_options]
-addopts = "--cov=afmlevel --cov-report=term-missing --cov-append"
+addopts = "--cov=afmlevel --cov-report=term-missing --cov-append -m 'not slow'"
 testpaths = ["tests"]
+markers = [
+    "slow: tests requiring real model weights downloaded from HuggingFace (deselect by default)",
+]
 
 [tool.coverage.run]
 branch = true
