@@ -8,7 +8,7 @@
 [![Tests](https://github.com/mayatek1/afMLevel/actions/workflows/tests.yaml/badge.svg)](https://github.com/mayatek1/afMLevel/actions/workflows/tests.yaml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![OS Independent](https://img.shields.io/badge/platform-linux%20%7C%20macOS%20%7C%20windows-lightgrey.svg)](README.md)
-[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen)](https://github.com/pre-commit/pre-commit)
+[![pre-commit](https://github.com/mayatek1/afMLevel/actions/workflows/pre-commit.yaml/badge.svg)](https://github.com/mayatek1/afMLevel/actions/workflows/pre-commit.yaml)
 [![PyTorch 2.0+](https://img.shields.io/badge/PyTorch-2.0%2B-EE4C2C.svg)](https://pytorch.org/)
 [![Hugging Face](https://img.shields.io/badge/🤗%20Hugging%20Face-Heath--AFM--Lab-yellow)](https://huggingface.co/Heath-AFM-Lab)
 
