@@ -353,6 +353,7 @@ def _ml_edges_with_model(
     """
     imarray = np.asarray(imarray, dtype=np.float32)
     input_was_2d = imarray.ndim == 2
+    # Ensure input has shape (N, H, W): add batch dimension for single 2D images
     if input_was_2d:
         img_nhw = imarray[None, ...]
     else:

@@ -7,6 +7,7 @@ import pytest
 import torch
 
 from afmlevel.mask_model import (
+    _ml_edges_with_model,
     _perimeter_remove,
     _predict_mask_256,
     _process_single_image_mask,
@@ -81,6 +82,28 @@ def test_process_single_image_mask_returns_2d_binary(tiny_unet_cpu, shape):
     assert np.all(np.isin(bin_mask, (0, 1)))
 
 
+@pytest.mark.parametrize(
+    "shape",
+    [
+        (64, 64),
+        (128, 128),
+        (256, 256),
+        (512, 512),
+        (128, 256),
+    ],
+)
+def test_ml_edges_with_model_returns_2d_binary(tiny_unet_cpu, shape):
+    """_ml_edges_with_model returns a 2D binary uint8 array for valid sizes."""
+    img = np.random.rand(*shape).astype(np.float32)
+
+    bin_edge_mask = _ml_edges_with_model(tiny_unet_cpu, img)
+
+    assert bin_edge_mask.ndim == 2
+    assert bin_edge_mask.shape == shape
+    assert bin_edge_mask.dtype == np.uint8
+    assert np.all(np.isin(bin_edge_mask, (0, 1)))
+
+
 def test_2d_input_returns_a_2d_uint8_mask(mock_load_unet):
     """Ensure ml_mask returns a 2D mask with  0 and 1 values from 2D input."""
     img = np.random.rand(256, 256).astype(np.float32)
@@ -112,6 +135,17 @@ def test_3d_input_returns_3d_uint8_mask_edge_array(mock_load_unet):
     """Ensure ml_edges returns a 3D mask array with 0 and 1 values from 3D input."""
     img = np.random.rand(3, 256, 256).astype(np.float32)
     edges = ml_edges(img)
+    assert edges.ndim == 3
+    assert edges.dtype == np.uint8
+    assert np.all((edges == 0) | (edges == 1))
+
+
+def test_3d_input_returns_3d_uint8_mask_edge_with_model_array(
+    tiny_unet_cpu, mock_load_unet
+):
+    """Test _ml_edges_with_model returns a 3D mask with 0 & 1 values from 3D input."""
+    img = np.random.rand(3, 256, 256).astype(np.float32)
+    edges = _ml_edges_with_model(tiny_unet_cpu, img)
     assert edges.ndim == 3
     assert edges.dtype == np.uint8
     assert np.all((edges == 0) | (edges == 1))
