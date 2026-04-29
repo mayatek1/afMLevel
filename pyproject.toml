@@ -94,10 +94,13 @@ dev = [
     "black",
     "codespell>=2.3.0",
     "setuptools_scm",
+    "nbstripout",
 ]
 notebooks = [
     "jupyter",
     "tifffile",
+    "afmreader",
+    "playnano",
 ]
 
 [project.urls]

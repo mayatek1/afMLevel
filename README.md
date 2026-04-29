@@ -110,10 +110,11 @@ levelled = level_ml_mask(imarray, method="iterative ML mask")
 ### Demonstration Notebooks
 
 A series of Jupyter notebooks have been written to help introduce and demonstrate **afMLevel**. In order to interact with
-them you must first install Jupyter in your environment with the command:
+them you must first install Jupyter notebook in your environment along with packages for opening raw AFM files. This can be
+done at installation with the command:
 
 ```bash
-pip install jupyter
+pip install -e .[notebooks]
 ```
 
 Then navigate to the notebooks folder within the `afMLevel` repository and launch Jupyter notebook:
