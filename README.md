@@ -8,7 +8,7 @@
 [![Tests](https://github.com/mayatek1/afMLevel/actions/workflows/tests.yaml/badge.svg)](https://github.com/mayatek1/afMLevel/actions/workflows/tests.yaml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![OS Independent](https://img.shields.io/badge/platform-linux%20%7C%20macOS%20%7C%20windows-lightgrey.svg)](README.md)
-[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen)](https://github.com/pre-commit/pre-commit)
+[![pre-commit](https://github.com/mayatek1/afMLevel/actions/workflows/pre-commit.yaml/badge.svg)](https://github.com/mayatek1/afMLevel/actions/workflows/pre-commit.yaml)
 [![PyTorch 2.0+](https://img.shields.io/badge/PyTorch-2.0%2B-EE4C2C.svg)](https://pytorch.org/)
 [![Hugging Face](https://img.shields.io/badge/🤗%20Hugging%20Face-Heath--AFM--Lab-yellow)](https://huggingface.co/Heath-AFM-Lab)
 
@@ -110,10 +110,11 @@ levelled = level_ml_mask(imarray, method="iterative ML mask")
 ### Demonstration Notebooks
 
 A series of Jupyter notebooks have been written to help introduce and demonstrate **afMLevel**. In order to interact with
-them you must first install Jupyter in your environment with the command:
+them you must first install Jupyter notebook in your environment along with packages for opening raw AFM files. This can be
+done at installation with the command:
 
 ```bash
-pip install jupyter
+pip install -e .[notebooks]
 ```
 
 Then navigate to the notebooks folder within the `afMLevel` repository and launch Jupyter notebook:

@@ -351,8 +351,9 @@ def _ml_edges_with_model(
         - 1 = background/interior
         - 0 = detected edges
     """
-    imarray = np.array(imarray, np.float32, copy=False)
+    imarray = np.asarray(imarray, dtype=np.float32)
     input_was_2d = imarray.ndim == 2
+    # Ensure input has shape (N, H, W): add batch dimension for single 2D images
     if input_was_2d:
         img_nhw = imarray[None, ...]
     else:
@@ -483,7 +484,7 @@ def ml_edges(
         - 0 = detected edges.
     """
     # 1)  Normalize to NHW
-    imarray = np.array(imarray, np.float32, copy=False)
+    imarray = np.asarray(imarray, dtype=np.float32)
     input_was_2d = imarray.ndim == 2
     if input_was_2d:
         img_nhw = imarray[None, ...]  # (1, H, W)
