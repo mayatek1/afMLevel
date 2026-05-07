@@ -684,9 +684,9 @@ DEFAULT_ML_ROUTINES = {
         },
         # Another second order weighted plane fit to masked image
         {"func": apply_level_weighted, "polyx": 2, "polyy": 2, "method": "plane"},
-        # Median line fit to masked image
+        # Weighted median line fit to edge masked image
         {
-            "func": apply_level,
+            "func": apply_level_weighted,
             "polyx": 0,
             "polyy": 0,
             "method": "med_line",
@@ -700,7 +700,7 @@ DEFAULT_ML_ROUTINES = {
         {"func": apply_level_weighted, "polyx": 2, "polyy": 2, "method": "plane"},
         # Median line fit to masked image
         {
-            "func": apply_level,
+            "func": apply_level_weighted,
             "polyx": 0,
             "polyy": 0,
             "method": "med_line",
@@ -721,9 +721,9 @@ DEFAULT_ML_ROUTINES = {
         },
         # Second order weighted plane fit to masked image
         {"func": apply_level_weighted, "polyx": 2, "polyy": 2, "method": "plane"},
-        # Median line fit to masked image
+        # Weighted median line fit to edge masked image
         {
-            "func": apply_level,
+            "func": apply_level_weighted,
             "polyx": 0,
             "polyy": 0,
             "method": "med_line",
@@ -765,9 +765,9 @@ DEFAULT_ML_ROUTINES = {
         },
         # Another second order weighted plane fit to masked image
         {"func": apply_level_weighted, "polyx": 2, "polyy": 2, "method": "plane"},
-        # Median line fit to masked image
+        # Weighted median line fit to edge masked image
         {
-            "func": apply_level,
+            "func": apply_level_weighted,
             "polyx": 0,
             "polyy": 0,
             "method": "med_line",
@@ -779,9 +779,9 @@ DEFAULT_ML_ROUTINES = {
         },
         # Another second order weighted plane fit to masked image
         {"func": apply_level_weighted, "polyx": 2, "polyy": 2, "method": "plane"},
-        # Median line fit to masked image
+        # Weighted median line fit to edge masked image
         {
-            "func": apply_level,
+            "func": apply_level_weighted,
             "polyx": 0,
             "polyy": 0,
             "method": "med_line",
