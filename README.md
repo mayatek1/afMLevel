@@ -104,7 +104,7 @@ from afmlevel.mask_model import level_ml_mask
 levelled = level_ml_bg(imarray)
 
 # Or using the mask-based approach
-levelled = level_ml_mask(imarray, method="iterative ML mask")
+levelled = level_ml_mask(imarray, method="iterative-ml-mask")
 ```
 
 ### Demonstration Notebooks
@@ -178,19 +178,19 @@ region weighted leveling operations.
 
 The available **afMLevel** mask levelling routines are:
 
-* MLMask
-* iterative MLMask
-* multi-plane MLMask
-* multi-plane MLMask + line
+* ml-mask
+* iterative-ml-mask (default)
+* multi-plane-ml-mask
+* multi-plane-ml-mask-line
 
 <!-- markdownlint-disable MD060 -->
 
-| Method                    | Processing steps |
-|---------------------------|------------------|
-| ML Mask                   | [1st‑order x–y plane][plane] → single `ml_mask()` → masked [median line subtraction][median] → masked [1st‑order x–y plane][plane] |
-| iterative ML mask         | [1st‑order x–y plane][plane] → 2× (`ml_mask()` + masked [1st‑order x–y plane][plane]) → `ml_mask()` → [median line][median] → masked [1st‑order x plane][plane] → 1× `ml_mask()` → [median line][median] → [2nd‑order x plane][plane] |
-| multi-plane-ML-it         | [1st‑order x–y plane][plane] → 3× (`ml_edges()` + masked [weighted 2nd‑order x–y plane][wplane]) → masked [weighted median line][wmedian] → `ml_edges()` → masked [weighted 2nd‑order x–y plane][wplane] → masked [weighted median line][wmedian] |
-| multi-plane-ML-it-line    | [1st‑order x–y plane][plane] → [median line subtraction][median] → 3× (`ml_edges()` + masked [weighted 2nd‑order x–y plane][wplane]) → masked [weighted median line][wmedian] → `ml_edges()` → masked [weighted 2nd‑order x–y plane][wplane] → masked [weighted median line][wmedian] |
+| Method                      | Processing steps |
+|-----------------------------|------------------|
+| ml-mask                     | [1st‑order x–y plane][plane] → single `ml_mask()` → masked [median line subtraction][median] → masked [1st‑order x–y plane][plane] |
+| iterative-ml-mask (default) | [1st‑order x–y plane][plane] → 2× (`ml_mask()` + masked [1st‑order x–y plane][plane]) → `ml_mask()` → [median line][median] → masked [1st‑order x plane][plane] → 1× `ml_mask()` → [median line][median] → [2nd‑order x plane][plane] |
+| multi-plane-ml-mask         | [1st‑order x–y plane][plane] → 3× (`ml_edges()` + masked [weighted 2nd‑order x–y plane][wplane]) → masked [weighted median line][wmedian] → `ml_edges()` → masked [weighted 2nd‑order x–y plane][wplane] → masked [weighted median line][wmedian] |
+| multi-plane-ml-mask-line    | [1st‑order x–y plane][plane] → [median line subtraction][median] → 3× (`ml_edges()` + masked [weighted 2nd‑order x–y plane][wplane]) → masked [weighted median line][wmedian] → `ml_edges()` → masked [weighted 2nd‑order x–y plane][wplane] → masked [weighted median line][wmedian] |
 
 [plane]: https://github.com/derollins/Python-Nanolocz-Library/blob/f3f782ebb32a2c4c80e8135b7f417c25e12f0afc/src/pnanolocz/level.py#L139
 [median]: https://github.com/derollins/Python-Nanolocz-Library/blob/f3f782ebb32a2c4c80e8135b7f417c25e12f0afc/src/pnanolocz/level.py#L400

@@ -220,6 +220,27 @@ def test_perimeter_remove_solid_square():
 class TestLevelMlmask:
     """Test suite for the level_ml_mask function."""
 
+    @pytest.mark.parametrize(
+        "raw_method, canonical",
+        [
+            ("iterative-ml-mask", "iterative-ml-mask"),  # already canonical
+            ("iterative_ml_mask", "iterative-ml-mask"),  # underscores
+            ("Iterative-ML-Mask", "iterative-ml-mask"),  # mixed case
+            ("ITERATIVE ML MASK", "iterative-ml-mask"),  # uppercase + spaces
+            ("ml_mask", "ml-mask"),  # underscores
+            ("ML Mask", "ml-mask"),  # spaces
+            ("ml-edge-mask", "ml-edge-mask"),  # original dict key
+            ("ml_edge_mask", "ml-edge-mask"),  # underscores
+            ("ML Edge Mask", "ml-edge-mask"),  # spaces + mixed case
+        ],
+    )
+    def test_method_string_normalisation(self, mock_load_unet, raw_method, canonical):
+        """Method strings are lowercased and spaces/underscores converted to hyphens."""
+        img = np.random.rand(64, 64).astype(np.float32)
+        # Passes if no ValueError is raised (i.e. normalised key is found in routines)
+        result = level_ml_mask(img, method=raw_method)
+        assert result.shape == img.shape
+
     def test_2d_input_returns_2d(self, mock_load_unet):
         """Ensure 2D input returns a 2D output of the same shape."""
         img = np.random.rand(256, 256).astype(np.float32)

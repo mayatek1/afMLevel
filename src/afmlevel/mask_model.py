@@ -556,7 +556,7 @@ def ml_edges(
 # Create a routines for iteratively applying the model and plane fits.
 # Uses the format of the `ROUTINES` dictionary in `pnanolocz.level_auto`.
 DEFAULT_ML_ROUTINES = {
-    "iterative ML mask": [
+    "iterative-ml-mask": [
         # Initial plane fit to raw image
         {
             "func": apply_level,
@@ -627,7 +627,7 @@ DEFAULT_ML_ROUTINES = {
             "method": "plane",
         },
     ],
-    "ML mask": [
+    "ml-mask": [
         # Initial plane fit to raw image
         {
             "func": apply_level,
@@ -655,7 +655,7 @@ DEFAULT_ML_ROUTINES = {
             "method": "plane",
         },
     ],
-    "multi-plane-ML-it": [
+    "multi-plane-ml-mask": [
         # Initial plane fit to raw image
         {
             "func": apply_level,
@@ -706,7 +706,7 @@ DEFAULT_ML_ROUTINES = {
             "method": "med_line",
         },
     ],
-    "multi-plane-ML": [
+    "ml-edge-mask": [
         # Initial plane fit to raw image
         {
             "func": apply_level,
@@ -729,7 +729,7 @@ DEFAULT_ML_ROUTINES = {
             "method": "med_line",
         },
     ],
-    "multi-plane-ML-it-line": [
+    "multi-plane-ml-mask-line": [
         # Initial plane fit to raw image
         {
             "func": apply_level,
@@ -798,7 +798,7 @@ def level_ml_mask(
     device: str | None = None,
     threshold: float = 0.5,
     min_size: int = 30,
-    method: str = "iterative ML mask",
+    method: str = "iterative-ml-mask",
     ml_routines: dict | None = None,
 ) -> np.ndarray:
     """
@@ -813,20 +813,20 @@ def level_ml_mask(
     and are applied according to the specified routine.
 
     Available methods (keys of `DEFAULT_ML_ROUTINES`):
-    - "iterative ML mask": multiple iterations of ml_mask and plane fits, ending with
+    - "iterative-ml-mask": multiple iterations of ml_mask and plane fits, ending with
       a median line fit.
-    - "ML mask": single ml_mask application followed by a median line fit and plane
+    - "ml-mask": single ml_mask application followed by a median line fit and plane
       fit.
-    - "multi-plane-ML-it": multiple iterations of ml_edges and second-order weighted
+    - "multi-plane-ml-mask": multiple iterations of ml_edges and second-order weighted
       plane fits, ending with a median line fit.
-    - "multi-plane-ML": single ml_edges application followed by a second-order weighted
+    - "ml-edge_mask": single ml_edges application followed by a second-order weighted
       plane fit and a median line fit.
-    - "multi-plane-ML-it-line": similar to "multi-plane-ML-it" but with additional
+    - "multi-plane-ml-mask-line": similar to "multi-plane-ml-mask" but with additional
       median line fit after th initial plane fit.
 
     These routines are adapted from the auto level routines from the Nanolocz software
     libraries (Python-Nanolocz-Library version:
-    https://github.com/derollins/Python-Nanolocz-Library). The "iterative ML mask"
+    https://github.com/derollins/Python-Nanolocz-Library). The "iterative-ml-mask"
     routine is a direct analogue of the original iterative routines but with the ML
     generated mask replacing the histogram based masks in the original. The multi-plane
     routines are adaptations of the mulit-plane routines an use edge masks created from
@@ -859,9 +859,9 @@ def level_ml_mask(
     method : str, optional
         Name of the levelling routine to apply. Must be a key of
         ``DEFAULT_ML_ROUTINES`` (or the custom ``ml_routines`` dict if supplied).
-        Available options are ``"iterative ML mask"``, ``"ML mask"``,
-        ``"multi-plane-ML-it"``, ``"multi-plane-ML"``, and
-        ``"multi-plane-ML-it-line"``. Default is ``"iterative ML mask"``.
+        Available options are ``"iterative-ml-mask"``, ``"ml-mask"``,
+        ``"multi-plane-ml-mask"``, ``"ml-edge-mask"``, and
+        ``"multi-plane-ml-mask-line"``. Default is ``"iterative-ml-mask"``.
     ml_routines : dict or None, optional
         Custom routines dictionary to use in place of ``DEFAULT_ML_ROUTINES``.
         Each value should be a list of step dicts in the same format as
@@ -895,6 +895,9 @@ def level_ml_mask(
         threshold,
         min_size,
     )
+
+    # Normalise method string: lowercase, spaces/underscores → hyphens
+    method = method.lower().replace("_", "-").replace(" ", "-")
 
     if method not in routines:
         logger.error("Unknown routine method: %s", method)
