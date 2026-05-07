@@ -229,7 +229,7 @@ class TestLevelMlmask:
             ("ITERATIVE ML MASK", "iterative-ml-mask"),  # uppercase + spaces
             ("ml_mask", "ml-mask"),  # underscores
             ("ML Mask", "ml-mask"),  # spaces
-            ("ML-edge-mask", "ml-edge-mask"),  # original dict key
+            ("ml-edge-mask", "ml-edge-mask"),  # original dict key
             ("ml_edge_mask", "ml-edge-mask"),  # underscores
             ("ML Edge Mask", "ml-edge-mask"),  # spaces + mixed case
         ],

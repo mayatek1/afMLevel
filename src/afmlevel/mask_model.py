@@ -819,7 +819,7 @@ def level_ml_mask(
       fit.
     - "multi-plane-ml-mask": multiple iterations of ml_edges and second-order weighted
       plane fits, ending with a median line fit.
-    - "ML-edge_mask": single ml_edges application followed by a second-order weighted
+    - "ml-edge_mask": single ml_edges application followed by a second-order weighted
       plane fit and a median line fit.
     - "multi-plane-ml-mask-line": similar to "multi-plane-ml-mask" but with additional
       median line fit after th initial plane fit.
@@ -860,7 +860,7 @@ def level_ml_mask(
         Name of the levelling routine to apply. Must be a key of
         ``DEFAULT_ML_ROUTINES`` (or the custom ``ml_routines`` dict if supplied).
         Available options are ``"iterative-ml-mask"``, ``"ml-mask"``,
-        ``"multi-plane-ml-mask"``, ``"ML-edge-mask"``, and
+        ``"multi-plane-ml-mask"``, ``"ml-edge-mask"``, and
         ``"multi-plane-ml-mask-line"``. Default is ``"iterative-ml-mask"``.
     ml_routines : dict or None, optional
         Custom routines dictionary to use in place of ``DEFAULT_ML_ROUTINES``.
