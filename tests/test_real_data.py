@@ -193,12 +193,12 @@ class TestLevelMlMaskRealData:
 
     def test_2d_image_output_is_valid(self, real_image_2d):
         """level_ml_mask on a real 2D image produces a statistically valid output."""
-        result = level_ml_mask(real_image_2d)
+        result = level_ml_mask(real_image_2d, method="iterative-ml-mask")
         assert_mask_levelled_quality(result, real_image_2d)
 
     def test_3d_stack_output_is_valid(self, real_image_3d):
         """level_ml_mask on a real 3D stack produces a statistically valid output."""
-        result = level_ml_mask(real_image_3d)
+        result = level_ml_mask(real_image_3d, method="iterative-ml-mask")
         assert_mask_levelled_quality(result, real_image_3d)
 
     def test_2d_output_reduces_large_scale_variation(self, real_image_2d):
@@ -208,7 +208,7 @@ class TestLevelMlMaskRealData:
         Test by comparing the std of row means before and after —
         a well-levelled image has more uniform row-to-row means.
         """
-        result = level_ml_mask(real_image_2d)
+        result = level_ml_mask(real_image_2d, method="iterative-ml-mask")
         row_std_before = np.std(np.mean(real_image_2d, axis=1))
         row_std_after = np.std(np.mean(result, axis=1))
         assert (
