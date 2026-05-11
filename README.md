@@ -3,6 +3,7 @@
 # afMLevel: Deep-Learning for Levelling AFM Data
 
 <div align="center">
+
 [![PyPI version](https://img.shields.io/pypi/v/afmlevel)](https://pypi.org/project/afmlevel/)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/afmlevel)](https://pypi.org/project/afmlevel/)
 [![PyPI - Downloads](https://img.shields.io/pypi/dm/afmlevel)](https://pypi.org/project/afmlevel/)
@@ -12,6 +13,7 @@
 [![PyTorch 2.0+](https://img.shields.io/badge/PyTorch-2.0%2B-EE4C2C.svg)](https://pytorch.org/)
 [![Hugging Face](https://img.shields.io/badge/🤗%20Hugging%20Face-Heath--AFM--Lab-yellow)](https://huggingface.co/Heath-AFM-Lab)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
+
 </div>
 
 ## **Overview**
@@ -35,7 +37,7 @@ and `background_model` modules respectively. These tools allow the levelling of 
   auto-levelling routines as an alternative to generating the mask by thresholding (e.g. by Otsu’s method, fixed or
   relative value methods) to process raw AFM images.
 
-![Model overviews](docs/images/afmlevel_overview.png)
+![Model overviews](https://raw.githubusercontent.com/mayatek1/afMLevel/main/docs/images/afmlevel_overview.png)
 
 ### Model Weights
 
