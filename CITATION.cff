@@ -44,10 +44,8 @@ keywords:
 
 version: 0.1.0
 date-released: 2026-05-11
-year: 2026
 
 repository-code: https://github.com/mayatek1/afMLevel
 url: https://github.com/mayatek1/afMLevel
 
 license: BSD-3-Clause
-license-url: https://opensource.org/licenses/BSD-3-Clause
