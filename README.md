@@ -123,9 +123,8 @@ The demo notebooks also give an example of loading AFM files or TIFF files to Nu
 | `torch ≥ 2.0` | U-Net model inference |
 | `huggingface_hub` | Automatic model weight download and caching |
 | `pnanolocz` | AFM levelling routines used by MLMask methods |
-| `numpy`, `scipy`, `pandas` | Array and numerical operations |
-| `scikit-image`, `scikit-learn`, `opencv-python-headless` | Image processing utilities |
-| `pillow`, `matplotlib` | Image I/O and visualisation |
+| `numpy`, `scipy` | Array and numerical operations |
+| `scikit-image`, `opencv-python-headless` | Image processing utilities |
 
 A GPU is not required — models run on CPU — but inference will be faster with CUDA available.
 

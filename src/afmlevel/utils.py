@@ -187,6 +187,11 @@ def linefit(imarray: np.ndarray, polyx: int) -> np.ndarray:
     np.ndarray
         2D array of the same shape containing the fitted values.
 
+    Raises
+    ------
+    ValueError
+        If `polyx` is not greater than 0.
+
     Notes
     -----
     Rows are fitted independently. All finite values are treated as valid.
@@ -204,6 +209,8 @@ def linefit(imarray: np.ndarray, polyx: int) -> np.ndarray:
             # Evaluate polynomial
             y2[i, :] = np.polyval(p, x)
         return y2
+    else:
+        raise ValueError("polyx must be > 0")
 
 
 def swap01(maskarray: np.ndarray) -> np.ndarray:
