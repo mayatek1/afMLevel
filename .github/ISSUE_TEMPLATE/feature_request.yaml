@@ -1,0 +1,81 @@
+name: Feature Request
+description: Suggest a new feature or improvement for afmlevel
+title: "[Feature] <short description>"
+labels: [enhancement]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a feature for **afmlevel** (Python API, notebooks, or playNano plugin)!
+
+  - type: input
+    id: summary
+    attributes:
+      label: Feature summary
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / limitation
+      placeholder: What is currently difficult or not possible?
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      placeholder: How should this work? (API, playNano, output, etc.)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: usage
+    attributes:
+      label: Where would this be used?
+      options:
+        - Python API
+        - Demo notebooks
+        - playNano plugin
+        - All
+
+  - type: input
+    id: functions
+    attributes:
+      label: Related functions (if any)
+      placeholder: level_ml_bg, ml_mask, ml_edges, level_ml_mask
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      placeholder: Workarounds or similar tools you've tried
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - Low
+        - Medium
+        - High
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: context
+    attributes:
+      label: Additional context
+      options:
+        - label: I can help implement this
+        - label: I can provide example AFM data
+        - label: This relates to an issue/bug
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Extra details
+      placeholder: Links, examples, sketches, screenshots

@@ -12,18 +12,17 @@ authors = [
 ]
 dynamic = ["version"]
 readme = "README.md"
-license = { text = "BSD-3-Clause" }
+license = { file = "LICENSE" }
 requires-python = ">=3.11"
 dependencies = [
   "torch>=2.0",
-  "pytorch-msssim",
   "scipy",
   "opencv-python-headless",
   "numpy",
   "pillow",
   "scikit-learn",
   "scikit-image",
-  "pandas",
+  "pandas>=2.2",
   "matplotlib",
   "pnanolocz",
   "huggingface_hub",
