@@ -100,13 +100,17 @@ levelled = level_ml_mask(imarray, method="iterative-ml-mask")
 
 ### Demonstration Notebooks
 
-A series of Jupyter notebooks have been written to help introduce and demonstrate **afMLevel**. In order to interact with
+A series of Jupyter notebooks have been written to help introduce and demonstrate **afMLevel**. Access these by
+cloning the GitHub repository (`git clone https://github.com/mayatek1/afMLevel.git`). In order to interact with
 them you must first install Jupyter notebook in your environment along with packages for opening raw AFM files. This can be
 done at installation with the command:
 
 ```bash
-pip install -e .[notebooks]
+pip install afmlevel[notebooks]        # from PyPI
+pip install -e ".[notebooks]"          # from cloned repo root
 ```
+
+You can also manually install `playnano`, `afmreader`, `tifffile`, `matplotlib` and `jupyter`.
 
 Then navigate to the notebooks folder within the `afMLevel` repository and launch Jupyter notebook:
 
@@ -202,7 +206,7 @@ the [notebooks](#demonstration-notebooks).
 
 **afMLevel** is also supported as a plugin for [playNano](https://github.com/derollins/playNano) out of the box. Simply install
 both packages in the same environment and you will be able to use the `level_ml_bg` and `level_ml_mask` functions within
-**playNano** straight away. See the [AFMlevel_video_demo notebook](notebooks/afMlevel_video_demo.ipynb) for a programmatic demonstration.
+**playNano** straight away. See the [afMlevel_video_demo notebook](notebooks/afMlevel_video_demo.ipynb) for a programmatic demonstration.
 
 ## Contributing and Issues
 
