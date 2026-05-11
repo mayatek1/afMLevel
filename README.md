@@ -3,15 +3,15 @@
 # afMLevel: Deep-Learning for Levelling AFM Data
 
 <div align="center">
-
-[![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
+[![PyPI version](https://img.shields.io/pypi/v/afmlevel)](https://pypi.org/project/afmlevel/)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/afmlevel)](https://pypi.org/project/afmlevel/)
+[![PyPI - Downloads](https://img.shields.io/pypi/dm/afmlevel)](https://pypi.org/project/afmlevel/)
 [![Tests](https://github.com/mayatek1/afMLevel/actions/workflows/tests.yaml/badge.svg)](https://github.com/mayatek1/afMLevel/actions/workflows/tests.yaml)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
-[![OS Independent](https://img.shields.io/badge/platform-linux%20%7C%20macOS%20%7C%20windows-lightgrey.svg)](README.md)
 [![pre-commit](https://github.com/mayatek1/afMLevel/actions/workflows/pre-commit.yaml/badge.svg)](https://github.com/mayatek1/afMLevel/actions/workflows/pre-commit.yaml)
+[![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 [![PyTorch 2.0+](https://img.shields.io/badge/PyTorch-2.0%2B-EE4C2C.svg)](https://pytorch.org/)
 [![Hugging Face](https://img.shields.io/badge/🤗%20Hugging%20Face-Heath--AFM--Lab-yellow)](https://huggingface.co/Heath-AFM-Lab)
-
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 </div>
 
 ## **Overview**
@@ -58,7 +58,15 @@ conda create -n afmlevel-env python=3.11
 conda activate afmlevel-env
 ```
 
-### Clone the GitHub repository and install
+### Installation
+
+The easiest way to install **afMLevel** is from PyPi, simply:
+
+```bash
+pip install afmlevel
+```
+
+Alternatively you can clone the GitHub repository and install.
 
 Ensure you have [git](https://git-scm.com/) installed on your computer then use the command:
 
