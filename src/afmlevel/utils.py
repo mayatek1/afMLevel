@@ -139,6 +139,10 @@ def normalise(imarray: np.ndarray) -> tuple[np.ndarray, float, float]:
     max_val = np.max(imarray)
     data_range = max_val - min_val
 
+    # Add guard against zero range to avoid division by zero
+    if data_range == 0:
+        return np.zeros_like(imarray, dtype=np.float32), min_val, 0.0
+
     imnorm = (imarray - min_val) / data_range
     return imnorm, min_val, data_range
 
