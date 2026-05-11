@@ -1,36 +1,36 @@
-# This CITATION.cff file was generated with cffinit.
-# Visit https://bit.ly/cffinit to generate yours today!
-
 cff-version: 1.2.0
-title: afMLevel: Deep-Learning for Levelling AFM Data
+title: afMLevel: Deep Learning for Levelling AFM Data
+
 message: >-
   If you use this software, please cite it using the
   metadata from this file.
 type: software
+
 authors:
   - given-names: Maya
     family-names: Tekchandani
     email: pymte@leeds.ac.uk
     affiliation: University of Leeds
-  - given-names: Daniel
-    name-particle: E
+
+  - given-names: Daniel E.
     family-names: Rollins
     email: d.e.rollins@leeds.ac.uk
     affiliation: University of Leeds
-  - given-names: George
-    name-particle: R
+    orcid: https://orcid.org/0009-0008-5324-7679
+
+  - given-names: George R.
     family-names: Heath
     email: G.R.Heath@leeds.ac.uk
     affiliation: University of Leeds
-year: 2026
-repository-code: 'https://github.com/mayatek1/afMLevel'
-url: 'https://github.com/mayatek1/afMLevel'
+    orcid: https://orcid.org/0000-0001-6431-2191
+
 abstract: >-
   Python package for automatic levelling of atomic force microscopy (AFM) data
   using pre-trained U-Net models for background prediction and feature-aware
   image processing.
+
 keywords:
-  - afm
+  - AFM
   - atomic force microscopy
   - high-speed AFM
   - machine learning
@@ -40,5 +40,12 @@ keywords:
   - AI
   - image analysis
   - microscopy
-  - nano
+  - nanoscience
+
+version: 0.1.0
+date-released: 2026-05-11
+
+repository-code: https://github.com/mayatek1/afMLevel
+url: https://github.com/mayatek1/afMLevel
+
 license: BSD-3-Clause

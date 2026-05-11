@@ -1,0 +1,92 @@
+name: Bug Report
+description: Report a problem with afmlevel
+title: "[BUG] <short description>"
+labels: [bug]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug in **afmlevel** (Python API, notebooks, or playNano plugin).
+        Please provide enough detail for us to reproduce the issue.
+
+  - type: textarea
+    id: bug-description
+    attributes:
+      label: Bug description
+      placeholder: What happened?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: usage
+    attributes:
+      label: Usage
+      options:
+        - Python API
+        - Demo notebook
+        - playNano plugin
+        - Other
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: textarea
+    id: code
+    attributes:
+      label: Code / Workflow
+      description: Minimal code example or playNano workflow
+      placeholder: |
+        import afmlevel as afm
+        afm.level_ml_bg(data)
+
+  - type: input
+    id: functions
+    attributes:
+      label: Function(s) used
+      placeholder: level_ml_bg, ml_mask, ml_edges, level_ml_mask
+
+  - type: input
+    id: data
+    attributes:
+      label: Data (link if possible)
+      placeholder: https://...
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+      placeholder: What should have happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour / errors
+      placeholder: Output, traceback, or artefacts
+
+  - type: textarea
+    id: visuals
+    attributes:
+      label: Images (if relevant)
+      description: Paste AFM images (raw, leveled, masks, etc.)
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: |
+        OS:
+        Python:
+        afmlevel:
+        numpy/scipy:
+        playNano (if used):

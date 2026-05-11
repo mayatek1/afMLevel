@@ -43,25 +43,6 @@ Pre‑trained PyTorch model weights for the **MLMask** and **MLBackground** U‑
 parameters, are hosted in our [Hugging Face repositories](https://huggingface.co/Heath-AFM-Lab). These are automatically
 downloaded and cached when the model is first run and then reused for subsequent applications of the model.
 
-These are currently held in a private repository. For access please contact Dr George Heath:
-[G.R.Heath@leeds.ac.uk](mailto:G.R.Heath@leeds.ac.uk)
-
-Once given access you will need to add a Hugging Face access token to your environment. The easiest way is to
-log in using the Hugging Face CLI:
-
-```bash
-pip install huggingface_hub
-huggingface-cli login
-```
-
-This only needs to be done once — the token is cached locally and picked up automatically on subsequent runs.
-Alternatively, set the `HF_TOKEN` environment variable directly:
-
-```bash
-export HF_TOKEN=hf_...   # Linux/macOS
-set HF_TOKEN=hf_...      # Windows
-```
-
 The models are used for inference only; **afMLevel** does not retrain or modify the weights during use.
 
 ## **Quick-start guide**
@@ -142,10 +123,8 @@ The demo notebooks also give an example of loading AFM files or TIFF files to Nu
 | `torch ≥ 2.0` | U-Net model inference |
 | `huggingface_hub` | Automatic model weight download and caching |
 | `pnanolocz` | AFM levelling routines used by MLMask methods |
-| `numpy`, `scipy`, `pandas` | Array and numerical operations |
-| `scikit-image`, `scikit-learn`, `opencv-python-headless` | Image processing utilities |
-| `pillow`, `matplotlib` | Image I/O and visualisation |
-| `pytorch-msssim` | Structural similarity loss (model training dependency) |
+| `numpy`, `scipy` | Array and numerical operations |
+| `scikit-image`, `opencv-python-headless` | Image processing utilities |
 
 A GPU is not required — models run on CPU — but inference will be faster with CUDA available.
 

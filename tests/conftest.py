@@ -23,9 +23,10 @@ RESOURCES_DIR = TESTS_DIR / "resources"
 # Expected outputs for the committed sample TIFFs.
 # Update these deliberately when model weights change — don't just fix failing tests.
 # Last updated: 2026-04-27
-# Model weights: background_model.pth, mask_model.pth
+# Model weights: background_unet.pth, mask_unet.pth
 # Weights source:
-# * mask_model.pth: https://huggingface.co/Heath-AFM-Lab/afMLevel-mask-unet (commit 27dd728) # noqa
+# * mask_unet: https://huggingface.co/Heath-AFM-Lab/afMLevel-mask-unet (commit 27dd728) # noqa
+# * background_unet: https://huggingface.co/Heath-AFM-Lab/afMLevel-background-unet (commit ff669bc) # noqa
 # Sample data: tests/resources/sample_2d.tiff (200×200), sample_3d.tiff (3×256×256)
 # ---------------------------------------------------------------------------
 

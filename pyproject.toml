@@ -12,19 +12,14 @@ authors = [
 ]
 dynamic = ["version"]
 readme = "README.md"
-license = { text = "BSD-3-Clause" }
+license = { file = "LICENSE" }
 requires-python = ">=3.11"
 dependencies = [
   "torch>=2.0",
-  "pytorch-msssim",
   "scipy",
   "opencv-python-headless",
   "numpy",
-  "pillow",
-  "scikit-learn",
   "scikit-image",
-  "pandas",
-  "matplotlib",
   "pnanolocz",
   "huggingface_hub",
 ]
@@ -77,6 +72,7 @@ classifiers = [
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Topic :: Scientific/Engineering :: Image Processing",
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
   "Topic :: Scientific/Engineering :: Physics",
@@ -97,6 +93,7 @@ dev = [
     "nbstripout",
 ]
 notebooks = [
+    "matplotlib",
     "jupyter",
     "tifffile",
     "afmreader",
@@ -152,7 +149,7 @@ include_trailing_comma = true
 force_grid_wrap = 0
 combine_as_imports = true
 known_first_party = ["pnanolocz"]
-known_third_party = ["numpy","scipy","matplotlib","torch","sklearn","skimage","pandas","PIL","cv2","pytorch_msssim"]
+known_third_party = ["numpy","scipy","matplotlib","torch","skimage","cv2","huggingface_hub"]
 
 [tool.ruff]
 line-length = 88

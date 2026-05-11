@@ -65,7 +65,6 @@ authors.
 """
 
 import logging
-from typing import List
 
 import cv2
 import numpy as np
@@ -292,7 +291,7 @@ def ml_mask(
 
     # 3D stack
     N = imarray.shape[0]
-    out_masks: List[np.ndarray] = []
+    out_masks: list[np.ndarray] = []
     for i in range(N):
         mask_i = _process_single_image_mask(
             model,
@@ -819,10 +818,10 @@ def level_ml_mask(
       fit.
     - "multi-plane-ml-mask": multiple iterations of ml_edges and second-order weighted
       plane fits, ending with a median line fit.
-    - "ml-edge_mask": single ml_edges application followed by a second-order weighted
+    - "ml-edge-mask": single ml_edges application followed by a second-order weighted
       plane fit and a median line fit.
     - "multi-plane-ml-mask-line": similar to "multi-plane-ml-mask" but with additional
-      median line fit after th initial plane fit.
+      median line fit after the initial plane fit.
 
     These routines are adapted from the auto level routines from the Nanolocz software
     libraries (Python-Nanolocz-Library version:
@@ -866,6 +865,11 @@ def level_ml_mask(
         Custom routines dictionary to use in place of ``DEFAULT_ML_ROUTINES``.
         Each value should be a list of step dicts in the same format as
         ``DEFAULT_ML_ROUTINES``. If None, the default routines are used.
+        The ``"func"`` key for masking steps must be the literal
+        :func:`ml_mask` or :func:`ml_edges` objects imported from this
+        module — callable wrappers or re-implementations with the same
+        signature will not be recognised as masking steps and will be
+        treated as levelling functions instead.
 
     Returns
     -------
