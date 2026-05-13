@@ -4,13 +4,15 @@
 
 <div align="center">
 
-[![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
+[![PyPI version](https://img.shields.io/pypi/v/afmlevel)](https://pypi.org/project/afmlevel/)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/afmlevel)](https://pypi.org/project/afmlevel/)
+[![PyPI - Downloads](https://img.shields.io/pypi/dm/afmlevel)](https://pypi.org/project/afmlevel/)
 [![Tests](https://github.com/mayatek1/afMLevel/actions/workflows/tests.yaml/badge.svg)](https://github.com/mayatek1/afMLevel/actions/workflows/tests.yaml)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
-[![OS Independent](https://img.shields.io/badge/platform-linux%20%7C%20macOS%20%7C%20windows-lightgrey.svg)](README.md)
 [![pre-commit](https://github.com/mayatek1/afMLevel/actions/workflows/pre-commit.yaml/badge.svg)](https://github.com/mayatek1/afMLevel/actions/workflows/pre-commit.yaml)
+[![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 [![PyTorch 2.0+](https://img.shields.io/badge/PyTorch-2.0%2B-EE4C2C.svg)](https://pytorch.org/)
 [![Hugging Face](https://img.shields.io/badge/🤗%20Hugging%20Face-Heath--AFM--Lab-yellow)](https://huggingface.co/Heath-AFM-Lab)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 
 </div>
 
@@ -35,7 +37,7 @@ and `background_model` modules respectively. These tools allow the levelling of 
   auto-levelling routines as an alternative to generating the mask by thresholding (e.g. by Otsu’s method, fixed or
   relative value methods) to process raw AFM images.
 
-![Model overviews](docs/images/afmlevel_overview.png)
+![Model overviews](https://raw.githubusercontent.com/mayatek1/afMLevel/main/docs/images/afmlevel_overview.png)
 
 ### Model Weights
 
@@ -58,7 +60,15 @@ conda create -n afmlevel-env python=3.11
 conda activate afmlevel-env
 ```
 
-### Clone the GitHub repository and install
+### Installation
+
+The easiest way to install **afMLevel** is from PyPi, simply:
+
+```bash
+pip install afmlevel
+```
+
+Alternatively you can clone the GitHub repository and install.
 
 Ensure you have [git](https://git-scm.com/) installed on your computer then use the command:
 
@@ -90,13 +100,17 @@ levelled = level_ml_mask(imarray, method="iterative-ml-mask")
 
 ### Demonstration Notebooks
 
-A series of Jupyter notebooks have been written to help introduce and demonstrate **afMLevel**. In order to interact with
+A series of Jupyter notebooks have been written to help introduce and demonstrate **afMLevel**. Access these by
+cloning the GitHub repository (`git clone https://github.com/mayatek1/afMLevel.git`). In order to interact with
 them you must first install Jupyter notebook in your environment along with packages for opening raw AFM files. This can be
 done at installation with the command:
 
 ```bash
-pip install -e .[notebooks]
+pip install afmlevel[notebooks]        # from PyPI
+pip install -e ".[notebooks]"          # from cloned repo root
 ```
+
+You can also manually install `playnano`, `afmreader`, `tifffile`, `matplotlib` and `jupyter`.
 
 Then navigate to the notebooks folder within the `afMLevel` repository and launch Jupyter notebook:
 
@@ -192,7 +206,7 @@ the [notebooks](#demonstration-notebooks).
 
 **afMLevel** is also supported as a plugin for [playNano](https://github.com/derollins/playNano) out of the box. Simply install
 both packages in the same environment and you will be able to use the `level_ml_bg` and `level_ml_mask` functions within
-**playNano** straight away. See the [AFMlevel_video_demo notebook](notebooks/afMlevel_video_demo.ipynb) for a programmatic demonstration.
+**playNano** straight away. See the [afMlevel_video_demo notebook](notebooks/afMlevel_video_demo.ipynb) for a programmatic demonstration.
 
 ## Contributing and Issues
 

@@ -8,13 +8,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-05-13
+
 ### Added
 
-- Add PyPi publisting workflow.
+- PyPI publishing workflow (`publish-pypi.yaml`) with trusted publishing via OIDC.
+
+### Fixed
+
+- Expose `__version__` in the public package namespace via `__init__.py`.
+- Fix README image URL to display correctly on PyPI.
 
 ### Changed
 
-- Use pre-extracted files of demo data in the workflow if available.
+- Use pre-extracted demo data files in notebook if already available.
+
+### Docs
+
+- Add PyPI version, Python version, and downloads badges to README.
+- Added PyPi installation instructions to README.
 
 ## [0.1.0] - 2026-05-11
 
