@@ -16,6 +16,37 @@
 
 </div>
 
+## **Paper Branch**
+
+This is the `afmlevel-paper` branch, which contains extra scripts for model training and evaluation as referenced in
+the 2026 afMLevel paper, first deposited on [bioRxiv](https://www.biorxiv.org/content/10.64898/2026.10.19.760138v1):
+
+Tekchandani M, Rollins DE, Westerell M, Evans SD, Adams PG, Heath GR.
+*afMLevel: Deep Learning U-Net Models for Levelling Atomic Force Microscopy Images and Movies*.
+bioRxiv (2026).
+<https://doi.org/10.64898/2026.10.19.760138>
+
+### **Training code**
+
+This branch contains the scripts used to train the published **MLMask** and **MLBackground** models described in the
+afMLevel paper. They are in [`training/`](training/) and were run on Aire, the University of Leeds High Performance
+Computing (HPC) facility, using the training dataset published on Hugging Face as
+[afMLevel-data](https://doi.org/10.57967/hf/11026).
+
+### **Evaluation scripts**
+
+This branch also contains the scripts used to generate the model evaluation data presented in Figure 4 and SI Table S2
+of the paper. These are in [`evaluation/`](evaluation/). The main script, `apply_levelling_and_calculate_MSE.m`, should
+be set up as described in the [evaluation README](evaluation/README.md) and in the script itself, then run from MATLAB
+with a configured Python environment on the test dataset (the `test` directory of
+[afMLevel-data](https://doi.org/10.57967/hf/11026)).
+
+The [`evaluation/`](evaluation/) folder also contains `unet_timing.py`, which benchmarks the inference speed of the
+models on raw HS-AFM data through [playNano](https://github.com/derollins/playNano). It was used to create Figure 5B
+and C, run on the datasets listed in the paper. It was originally shared as a
+[GitHub Gist](https://gist.github.com/derollins/9c5ec2dfd15dfe209a4733707c9915a8), which is the version referenced in the
+paper.
+
 ## **Overview**
 
 AFM image levelling, to correct background tilt and line-by-line scan artifacts, is a critical preprocessing step that
