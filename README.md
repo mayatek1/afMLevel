@@ -274,23 +274,33 @@ pytest -m "slow or not slow"    # all tests including slow
 
 ## Citation
 
-If you use **afMLevel** in your research, please cite the software. Citation metadata is provided via the `CITATION.cff`
-file in this repository and is automatically recognised by GitHub and reference managers.
+If you use **afMLevel** in your research, please cite the afMLevel paper:
 
-A human‑readable citation is provided below for convenience:
+> Tekchandani, M., Rollins, D. E., Westerell, M., Evans, S. D., Adams, P. G. & Heath, G. R. (2026).
+> afMLevel: Deep Learning U-Net Models for Levelling Atomic Force Microscopy Images and Movies. *bioRxiv*.
+> <https://doi.org/10.64898/2026.10.19.760138>
 
-Tekchandani, M., Rollins, D. E., & Heath, G. R. (2026). *afMLevel: Deep-Learning for Levelling AFM Data*. University of Leeds.
-https://github.com/mayatek1/afMLevel
+```bibtex
+@article{tekchandani2026afmlevel,
+  title   = {afMLevel: Deep Learning U-Net Models for Levelling Atomic Force Microscopy Images and Movies},
+  author  = {Tekchandani, Maya and Rollins, Daniel E. and Westerell, Megan and Evans, Stephen D. and
+             Adams, Peter G. and Heath, George R.},
+  journal = {bioRxiv},
+  year    = {2026},
+  doi     = {10.64898/2026.10.19.760138}
+}
+```
 
-### BibTeX
+To cite a specific version of the software, use the metadata in `CITATION.cff` (GitHub's **Cite this repository**
+button) or:
 
 ```bibtex
 @software{afmlevel,
-  title = {afMLevel: Deep-Learning for Levelling AFM Data},
-  author = {Tekchandani, Maya and Rollins, Daniel E. and Heath, George R.},
-  year = {2026},
-  url = {https://github.com/mayatek1/afMLevel},
+  title       = {afMLevel: Deep-Learning for Levelling AFM Data},
+  author      = {Tekchandani, Maya and Rollins, Daniel E. and Heath, George R.},
+  year        = {2026},
+  url         = {https://github.com/mayatek1/afMLevel},
   institution = {University of Leeds},
-  license = {BSD-3-Clause}
+  license     = {BSD-3-Clause}
 }
 ```
