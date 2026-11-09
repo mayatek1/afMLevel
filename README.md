@@ -48,7 +48,7 @@ downloaded and cached when the model is first run and then reused for subsequent
 The models are used for inference only; **afMLevel** does not retrain or modify the weights during use.
 
 > For the code used to train and evaluate the models as described in [Tekchandani *et al.*, 2026](https://doi.org/10.64898/2026.10.19.760138)
-> see the `afmlevel-paper` branch or the [`v0.1.0-paper` release](https://doi.org/10.5281/zenodo.23600149).
+> see the `afmlevel-paper` branch or the [`v0.1.1-paper` release](https://doi.org/10.5281/zenodo.23600149).
 
 ## **Quick-start guide**
 
